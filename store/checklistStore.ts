@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { db } from "../lib/infra/db";
+import { checklistRepository } from "../lib/infra/repositories";
 import type { DailyChecklist } from "../lib/domain/entities";
 
 interface ChecklistStoreState {
@@ -11,11 +11,11 @@ interface ChecklistStoreState {
 export const useChecklistStore = create<ChecklistStoreState>((set) => ({
   items: [],
   loadChecklist: async () => {
-    const items = await db.daily_checklist.toArray();
-    set({ items });
+    const result = await checklistRepository.list();
+    if (result.ok) set({ items: result.value.items });
   },
   addChecklistItem: async (item) => {
-    await db.daily_checklist.add(item);
+    await checklistRepository.create(item);
     set((state) => ({ items: [...state.items, item] }));
   },
 }));

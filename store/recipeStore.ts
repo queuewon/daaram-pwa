@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { db } from "../lib/infra/db";
+import { recipeRepository } from "../lib/infra/repositories";
 import type { Recipe } from "../lib/domain/entities";
 
 interface RecipeStoreState {
@@ -11,11 +11,11 @@ interface RecipeStoreState {
 export const useRecipeStore = create<RecipeStoreState>((set) => ({
   recipes: [],
   loadRecipes: async () => {
-    const recipes = await db.recipes.toArray();
-    set({ recipes });
+    const result = await recipeRepository.list();
+    if (result.ok) set({ recipes: result.value.items });
   },
   addRecipe: async (recipe) => {
-    await db.recipes.add(recipe);
+    await recipeRepository.create(recipe);
     set((state) => ({ recipes: [...state.recipes, recipe] }));
   },
 }));

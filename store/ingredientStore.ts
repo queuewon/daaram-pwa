@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { db } from "../lib/infra/db";
+import { ingredientRepository } from "../lib/infra/repositories";
 import type { Ingredient } from "../lib/domain/entities";
 
 interface IngredientStoreState {
@@ -11,11 +11,11 @@ interface IngredientStoreState {
 export const useIngredientStore = create<IngredientStoreState>((set) => ({
   ingredients: [],
   loadIngredients: async () => {
-    const ingredients = await db.ingredients.toArray();
-    set({ ingredients });
+    const result = await ingredientRepository.list();
+    if (result.ok) set({ ingredients: result.value.items });
   },
   addIngredient: async (ingredient) => {
-    await db.ingredients.add(ingredient);
+    await ingredientRepository.create(ingredient);
     set((state) => ({ ingredients: [...state.ingredients, ingredient] }));
   },
 }));

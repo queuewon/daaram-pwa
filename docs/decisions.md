@@ -14,3 +14,4 @@ Design Decisions — daaram-pwa
 2026-07-10 | importBackup에 forceEmpty 옵션 추가, 테이블이 기존에 레코드가 있는데 신규 백업이 0개로 줄이는 경우 기본적으로 거부 | F5(백업이 지인의 유일한 데이터 사본을 덮어씀) 위험 — 대량 소실을 명시적 확인 없이 자동 반영하지 않기 위함
 2026-07-10 | verify-gate.sh의 head_count/skip_count grep 범위를 app/lib/store에서 저장소 전체(node_modules 등 제외)로 확장 | Next.js 16의 proxy.ts/proxy.test.ts가 레포 루트에 있어야 하는데 기존 범위가 루트 파일을 못 봐서 "테스트 개수 감소" 거짓 게이밍 경보가 발생함
 2026-07-10 | known gap: IndexedDB read 경로(db.ts/store) zod 미검증, 추후 조치 필요 | 현재 스토어가 Dexie 조회 결과를 zod 재검증 없이 바로 state에 반영함 — CLAUDE.md의 "IndexedDB에서 읽은 값도 신뢰 경계" 원칙과 어긋나지만 이번 엔티티 재정의 범위 밖이라 스키마만 재사용 가능하게 옮겨두고 실제 적용은 보류
+2026-07-11 | lib/infra/repository.ts(제네릭 CRUD 팩토리)로 위 known gap을 해소, store/*.ts도 Dexie 직접 호출 대신 리포지토리 경유로 교체 | list()는 오염 레코드를 skippedCount로 건너뛰고(단일 레코드 손상이 전체 목록을 막지 않도록), get()은 명시적으로 하나를 요청한 것이므로 CorruptedRecord로 실패시켜 "삭제됨"과 "깨짐"을 구분함
