@@ -2,6 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "./db";
 import { exportBackup, importBackup } from "./backup";
 import type { RecipeId } from "../domain/ids";
+import { parsePositiveNumber } from "../domain/numbers";
+
+function pos(n: number) {
+  const result = parsePositiveNumber(n);
+  if (!result.ok) throw new Error("test setup");
+  return result.value;
+}
 
 beforeEach(async () => {
   await db.open();
@@ -24,6 +31,8 @@ async function addRecipe(id: string) {
     id: id as RecipeId,
     name: `레시피 ${id}`,
     categoryId: null,
+    batchSize: pos(1000),
+    memo: "",
     createdAt: "2026-07-10T00:00:00.000Z",
     updatedAt: "2026-07-10T00:00:00.000Z",
   });
@@ -55,14 +64,14 @@ describe("importBackup 검증 실패", () => {
     expect(await db.recipes.toArray()).toEqual(before);
   });
 
-  it("지원하지 않는 schemaVersion은 거부하고 DB를 변경하지 않는다", async () => {
+  it("구버전(v1) 백업 파일은 UnsupportedVersion으로 거부하고 DB를 변경하지 않는다 (F5)", async () => {
     await addRecipe("r1");
     const before = await db.recipes.toArray();
     const backup = await exportBackup();
 
-    const result = await importBackup({ ...backup, schemaVersion: 2 });
+    const result = await importBackup({ ...backup, schemaVersion: 1 });
 
-    expect(result).toEqual({ ok: false, error: { type: "UnsupportedVersion", found: 2 } });
+    expect(result).toEqual({ ok: false, error: { type: "UnsupportedVersion", found: 1 } });
     expect(await db.recipes.toArray()).toEqual(before);
   });
 });

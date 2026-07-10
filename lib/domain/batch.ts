@@ -1,15 +1,11 @@
 import type { IngredientId } from "./ids";
-import type { NonNegativeNumber, PositiveNumber } from "./numbers";
-
-export interface ScaleBatchLine {
-  ingredientId: IngredientId;
-  quantityGram: NonNegativeNumber;
-}
+import type { PositiveNumber } from "./numbers";
+import type { RecipeSnapshotLine } from "./recipeSnapshot";
 
 export interface ScaleBatchInput {
   baseYieldGram: PositiveNumber;
   targetYieldGram: PositiveNumber;
-  lines: readonly ScaleBatchLine[];
+  lines: readonly RecipeSnapshotLine[];
 }
 
 export interface ScaledLine {

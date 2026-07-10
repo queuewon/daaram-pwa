@@ -1,9 +1,7 @@
 import type { IngredientId } from "./ids";
-import type { NonNegativeNumber } from "./numbers";
+import type { RecipeSnapshotLine } from "./recipeSnapshot";
 
-export interface CostLineItem {
-  ingredientId: IngredientId;
-  quantityGram: NonNegativeNumber;
+export interface CostLineItem extends RecipeSnapshotLine {
   unitPriceKrwPerGram: number;
 }
 

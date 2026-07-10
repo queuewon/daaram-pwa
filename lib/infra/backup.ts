@@ -1,7 +1,12 @@
 import type { IndexableType, Table } from "dexie";
 import { err, ok, type Result } from "../domain/result";
 import { db } from "./db";
-import { BACKUP_TABLE_NAMES, backupFileSchema, type BackupFile } from "./backup.schema";
+import {
+  BACKUP_SCHEMA_VERSION,
+  BACKUP_TABLE_NAMES,
+  backupFileSchema,
+  type BackupFile,
+} from "./backup.schema";
 import type { z } from "zod";
 
 export interface ImportBackupOptions {
@@ -35,7 +40,7 @@ export async function exportBackup(): Promise<BackupFile> {
   };
 
   return backupFileSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     data,
   });
@@ -49,7 +54,7 @@ export async function importBackup(
     typeof raw === "object" &&
     raw !== null &&
     "schemaVersion" in raw &&
-    (raw as { schemaVersion: unknown }).schemaVersion !== 1
+    (raw as { schemaVersion: unknown }).schemaVersion !== BACKUP_SCHEMA_VERSION
   ) {
     return err({
       type: "UnsupportedVersion",

@@ -33,36 +33,36 @@ describe("GelatoDB", () => {
     await db.open();
   });
 
-  it("버전 1로 최초 오픈에 성공한다", () => {
-    expect(db.verno).toBe(1);
+  it("버전 2로 최초 오픈에 성공한다", () => {
+    expect(db.verno).toBe(2);
   });
 
   it("recipe_categories에 추가하고 조회할 수 있다", async () => {
     const id = "cat-1" as RecipeCategoryId;
-    await db.recipe_categories.add({ id, label: "젤라또" });
+    await db.recipe_categories.add({ id, name: "젤라또", colorHex: "#4f46e5" });
     const found = await db.recipe_categories.get(id);
-    expect(found).toEqual({ id, label: "젤라또" });
+    expect(found).toEqual({ id, name: "젤라또", colorHex: "#4f46e5" });
   });
 
   it("ingredient_categories에 추가하고 조회할 수 있다", async () => {
     const id = "icat-1" as IngredientCategoryId;
-    await db.ingredient_categories.add({ id, label: "유제품" });
+    await db.ingredient_categories.add({ id, name: "유제품", colorHex: "#123abc" });
     const found = await db.ingredient_categories.get(id);
-    expect(found).toEqual({ id, label: "유제품" });
+    expect(found).toEqual({ id, name: "유제품", colorHex: "#123abc" });
   });
 
   it("package_units에 추가하고 조회할 수 있다", async () => {
     const id = "pu-1" as PackageUnitId;
-    await db.package_units.add({ id, label: "1kg 팩", gramsPerUnit: pos(1000) });
+    await db.package_units.add({ id, name: "1kg 팩", colorHex: "#9ca3af" });
     const found = await db.package_units.get(id);
-    expect(found).toEqual({ id, label: "1kg 팩", gramsPerUnit: 1000 });
+    expect(found).toEqual({ id, name: "1kg 팩", colorHex: "#9ca3af" });
   });
 
   it("suppliers에 추가하고 조회할 수 있다", async () => {
     const id = "sup-1" as SupplierId;
-    await db.suppliers.add({ id, name: "동네 유제품상" });
+    await db.suppliers.add({ id, name: "동네 유제품상", contact: "010-1234-5678", memo: "" });
     const found = await db.suppliers.get(id);
-    expect(found).toEqual({ id, name: "동네 유제품상" });
+    expect(found?.contact).toBe("010-1234-5678");
   });
 
   it("ingredients에 추가하고 조회할 수 있다", async () => {
@@ -72,11 +72,14 @@ describe("GelatoDB", () => {
       name: "우유",
       categoryId: null,
       supplierId: null,
-      packageUnitId: null,
-      currentPriceKrwPerGram: nn(3),
+      packagePrice: nn(1000),
+      packageAmount: pos(500),
+      pricePerGram: nn(2),
+      stockCount: nn(0),
+      stockUnit: "개",
     });
     const found = await db.ingredients.get(id);
-    expect(found?.name).toBe("우유");
+    expect(found?.pricePerGram).toBe(2);
   });
 
   it("ingredient_price_history에 추가하고 조회할 수 있다", async () => {
@@ -84,11 +87,12 @@ describe("GelatoDB", () => {
     await db.ingredient_price_history.add({
       id,
       ingredientId: "ing-1" as IngredientId,
-      priceKrwPerGram: nn(3),
+      packagePrice: nn(1000),
+      packageAmount: pos(500),
       recordedAt: "2026-07-10T00:00:00.000Z",
     });
     const found = await db.ingredient_price_history.get(id);
-    expect(found?.priceKrwPerGram).toBe(3);
+    expect(found?.packagePrice).toBe(1000);
   });
 
   it("recipes에 추가하고 조회할 수 있다", async () => {
@@ -97,11 +101,13 @@ describe("GelatoDB", () => {
       id,
       name: "바닐라 젤라또",
       categoryId: null,
+      batchSize: pos(1000),
+      memo: "",
       createdAt: "2026-07-10T00:00:00.000Z",
       updatedAt: "2026-07-10T00:00:00.000Z",
     });
     const found = await db.recipes.get(id);
-    expect(found?.name).toBe("바닐라 젤라또");
+    expect(found?.batchSize).toBe(1000);
   });
 
   it("recipe_versions에 추가하고 조회할 수 있다", async () => {
@@ -110,8 +116,7 @@ describe("GelatoDB", () => {
       id,
       recipeId: "recipe-1" as RecipeId,
       versionNo: 1,
-      yieldGram: pos(1000),
-      lines: [],
+      snapshotJson: JSON.stringify({ batchSize: 1000, lines: [] }),
       createdAt: "2026-07-10T00:00:00.000Z",
     });
     const found = await db.recipe_versions.get(id);
@@ -120,8 +125,14 @@ describe("GelatoDB", () => {
 
   it("daily_checklist에 추가하고 조회할 수 있다", async () => {
     const id = "dc-1" as DailyChecklistId;
-    await db.daily_checklist.add({ id, date: "2026-07-10", note: "오늘생산 메모", isDone: false });
+    await db.daily_checklist.add({
+      id,
+      recipeId: "recipe-1" as RecipeId,
+      date: "2026-07-10",
+      batchSize: pos(1000),
+      status: "pending",
+    });
     const found = await db.daily_checklist.get(id);
-    expect(found?.note).toBe("오늘생산 메모");
+    expect(found?.status).toBe("pending");
   });
 });

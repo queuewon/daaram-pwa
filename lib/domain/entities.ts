@@ -13,23 +13,27 @@ import type { NonNegativeNumber, PositiveNumber } from "./numbers";
 
 export interface RecipeCategory {
   id: RecipeCategoryId;
-  label: string;
+  name: string;
+  colorHex: string;
 }
 
 export interface IngredientCategory {
   id: IngredientCategoryId;
-  label: string;
+  name: string;
+  colorHex: string;
 }
 
 export interface PackageUnit {
   id: PackageUnitId;
-  label: string;
-  gramsPerUnit: PositiveNumber;
+  name: string;
+  colorHex: string;
 }
 
 export interface Supplier {
   id: SupplierId;
   name: string;
+  contact: string;
+  memo: string;
 }
 
 export interface Ingredient {
@@ -37,14 +41,18 @@ export interface Ingredient {
   name: string;
   categoryId: IngredientCategoryId | null;
   supplierId: SupplierId | null;
-  packageUnitId: PackageUnitId | null;
-  currentPriceKrwPerGram: NonNegativeNumber;
+  packagePrice: NonNegativeNumber;
+  packageAmount: PositiveNumber;
+  pricePerGram: NonNegativeNumber;
+  stockCount: NonNegativeNumber;
+  stockUnit: string;
 }
 
 export interface IngredientPriceHistory {
   id: IngredientPriceHistoryId;
   ingredientId: IngredientId;
-  priceKrwPerGram: NonNegativeNumber;
+  packagePrice: NonNegativeNumber;
+  packageAmount: PositiveNumber;
   recordedAt: string;
 }
 
@@ -52,27 +60,26 @@ export interface Recipe {
   id: RecipeId;
   name: string;
   categoryId: RecipeCategoryId | null;
+  batchSize: PositiveNumber;
+  memo: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface RecipeVersionLine {
-  ingredientId: IngredientId;
-  quantityGram: NonNegativeNumber;
 }
 
 export interface RecipeVersion {
   id: RecipeVersionId;
   recipeId: RecipeId;
   versionNo: number;
-  yieldGram: PositiveNumber;
-  lines: readonly RecipeVersionLine[];
+  snapshotJson: string;
   createdAt: string;
 }
 
+export type DailyChecklistStatus = "pending" | "in_progress" | "done";
+
 export interface DailyChecklist {
   id: DailyChecklistId;
+  recipeId: RecipeId;
   date: string;
-  note: string;
-  isDone: boolean;
+  batchSize: PositiveNumber;
+  status: DailyChecklistStatus;
 }
