@@ -12,6 +12,9 @@ CLAUDE.local.md
 node_modules/
 dist/
 coverage/
+.next/
+next-env.d.ts
+*.tsbuildinfo
 
 # 로컬 DB
 *.db

@@ -1,0 +1,99 @@
+import type { IndexableType, Table } from "dexie";
+import { err, ok, type Result } from "../domain/result";
+import { db } from "./db";
+import { BACKUP_TABLE_NAMES, backupFileSchema, type BackupFile } from "./backup.schema";
+import type { z } from "zod";
+
+export interface ImportBackupOptions {
+  forceEmpty?: boolean;
+}
+
+export type BackupImportError =
+  | { type: "ValidationError"; issues: z.core.$ZodIssue[] }
+  | { type: "UnsupportedVersion"; found: number }
+  | { type: "RequiresConfirmation"; emptiedTables: string[] };
+
+async function replaceAll<T, TKey extends IndexableType>(
+  table: Table<T, TKey>,
+  rows: readonly T[],
+): Promise<void> {
+  await table.clear();
+  await table.bulkAdd(rows as T[]);
+}
+
+export async function exportBackup(): Promise<BackupFile> {
+  const data = {
+    recipes: await db.recipes.toArray(),
+    recipe_versions: await db.recipe_versions.toArray(),
+    ingredients: await db.ingredients.toArray(),
+    ingredient_price_history: await db.ingredient_price_history.toArray(),
+    suppliers: await db.suppliers.toArray(),
+    daily_checklist: await db.daily_checklist.toArray(),
+    recipe_categories: await db.recipe_categories.toArray(),
+    ingredient_categories: await db.ingredient_categories.toArray(),
+    package_units: await db.package_units.toArray(),
+  };
+
+  return backupFileSchema.parse({
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    data,
+  });
+}
+
+export async function importBackup(
+  raw: unknown,
+  options?: ImportBackupOptions,
+): Promise<Result<void, BackupImportError>> {
+  if (
+    typeof raw === "object" &&
+    raw !== null &&
+    "schemaVersion" in raw &&
+    (raw as { schemaVersion: unknown }).schemaVersion !== 1
+  ) {
+    return err({
+      type: "UnsupportedVersion",
+      found: Number((raw as { schemaVersion: unknown }).schemaVersion),
+    });
+  }
+
+  const parsed = backupFileSchema.safeParse(raw);
+  if (!parsed.success) {
+    return err({ type: "ValidationError", issues: parsed.error.issues });
+  }
+  const backup = parsed.data;
+
+  const existingCounts = {
+    recipes: await db.recipes.count(),
+    recipe_versions: await db.recipe_versions.count(),
+    ingredients: await db.ingredients.count(),
+    ingredient_price_history: await db.ingredient_price_history.count(),
+    suppliers: await db.suppliers.count(),
+    daily_checklist: await db.daily_checklist.count(),
+    recipe_categories: await db.recipe_categories.count(),
+    ingredient_categories: await db.ingredient_categories.count(),
+    package_units: await db.package_units.count(),
+  };
+
+  const emptiedTables = BACKUP_TABLE_NAMES.filter(
+    (name) => existingCounts[name] > 0 && backup.data[name].length === 0,
+  );
+
+  if (emptiedTables.length > 0 && !options?.forceEmpty) {
+    return err({ type: "RequiresConfirmation", emptiedTables });
+  }
+
+  await db.transaction("rw", db.tables, async () => {
+    await replaceAll(db.recipes, backup.data.recipes);
+    await replaceAll(db.recipe_versions, backup.data.recipe_versions);
+    await replaceAll(db.ingredients, backup.data.ingredients);
+    await replaceAll(db.ingredient_price_history, backup.data.ingredient_price_history);
+    await replaceAll(db.suppliers, backup.data.suppliers);
+    await replaceAll(db.daily_checklist, backup.data.daily_checklist);
+    await replaceAll(db.recipe_categories, backup.data.recipe_categories);
+    await replaceAll(db.ingredient_categories, backup.data.ingredient_categories);
+    await replaceAll(db.package_units, backup.data.package_units);
+  });
+
+  return ok(undefined);
+}
