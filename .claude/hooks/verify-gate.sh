@@ -30,8 +30,8 @@ done
 
 # S1: 게이밍 감지 — it(/test( 카운트가 HEAD 대비 감소했는가 (턴 단위 감지)
 base_count="$(git grep -Eh '^[[:space:]]*(it|test)\(' HEAD -- '*.test.ts' '*.test.tsx' '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ' || true)"
-head_count="$(grep -rEh --include='*.test.ts' --include='*.test.tsx' --include='*.spec.ts' '^[[:space:]]*(it|test)\(' app lib store 2>/dev/null | wc -l | tr -d ' ' || true)"
-skip_count="$(grep -rEh --include='*.test.ts' --include='*.test.tsx' --include='*.spec.ts' '(it|test|describe)\.skip\(|xit\(|xdescribe\(' app lib store 2>/dev/null | wc -l | tr -d ' ' || true)"
+head_count="$(grep -rEh --include='*.test.ts' --include='*.test.tsx' --include='*.spec.ts' --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=coverage '^[[:space:]]*(it|test)\(' . 2>/dev/null | wc -l | tr -d ' ' || true)"
+skip_count="$(grep -rEh --include='*.test.ts' --include='*.test.tsx' --include='*.spec.ts' --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist --exclude-dir=coverage '(it|test|describe)\.skip\(|xit\(|xdescribe\(' . 2>/dev/null | wc -l | tr -d ' ' || true)"
 if [ "${head_count:-0}" -lt "${base_count:-0}" ]; then
   echo "[hook][⑨게이밍] 테스트 개수 감소 감지 (${base_count} → ${head_count})." >&2
   echo "[hook] 삭제가 정당하다면 이유를 응답에 명시하고 사용자 승인을 받아라." >&2
