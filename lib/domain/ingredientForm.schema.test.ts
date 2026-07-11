@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ingredientFormInputSchema } from "./ingredientForm.schema";
-import type { SupplierId } from "./ids";
+import type { IngredientCategoryId, SupplierId } from "./ids";
 
 function validInput() {
   return {
     name: "우유",
+    categoryId: null as IngredientCategoryId | null,
     supplierId: null as SupplierId | null,
     packagePrice: 1000,
     packageAmount: 500,
@@ -25,6 +26,23 @@ describe("ingredientFormInputSchema — happy path", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("categoryId가 문자열이면 파싱 결과에 그대로 반영된다", () => {
+    const result = ingredientFormInputSchema.safeParse({
+      ...validInput(),
+      categoryId: "category-1" as IngredientCategoryId,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.categoryId).toBe("category-1");
+  });
+
+  it("categoryId가 null이면 파싱 결과도 null이다", () => {
+    const result = ingredientFormInputSchema.safeParse(validInput());
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.categoryId).toBeNull();
   });
 });
 

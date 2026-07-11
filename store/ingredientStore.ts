@@ -59,7 +59,7 @@ export const useIngredientStore = create<IngredientStoreState>((set) => ({
       const createdResult = createIngredient({
         id: generateId<"IngredientId">(),
         name: parsed.data.name,
-        categoryId: null,
+        categoryId: parsed.data.categoryId,
         supplierId: parsed.data.supplierId,
         packagePrice: parsed.data.packagePrice,
         packageAmount: parsed.data.packageAmount,
@@ -106,6 +106,7 @@ export const useIngredientStore = create<IngredientStoreState>((set) => ({
     const updatedIngredient: Ingredient = {
       ...existing,
       name: parsed.data.name,
+      categoryId: parsed.data.categoryId,
       supplierId: parsed.data.supplierId,
       packagePrice: parsed.data.packagePrice,
       packageAmount: parsed.data.packageAmount,

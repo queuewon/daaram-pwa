@@ -14,6 +14,9 @@ export default function HomePage() {
         <Link href="/suppliers" className="underline">
           공급업체
         </Link>
+        <Link href="/settings" className="underline">
+          설정
+        </Link>
       </nav>
     </main>
   );

@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useIngredientStore } from "@/store/ingredientStore";
 import { useSupplierStore } from "@/store/supplierStore";
+import { useIngredientCategoryStore, usePackageUnitStore } from "@/store/labelStores";
 import type { IngredientPriceHistory } from "@/lib/domain/entities";
-import type { IngredientId, SupplierId } from "@/lib/domain/ids";
+import type { IngredientCategoryId, IngredientId, SupplierId } from "@/lib/domain/ids";
 import PriceHistory from "./PriceHistory";
 
 interface IngredientEditorProps {
@@ -18,17 +19,29 @@ export default function IngredientEditor({ ingredientId }: IngredientEditorProps
   const loadIngredients = useIngredientStore((s) => s.loadIngredients);
   const loadPriceHistory = useIngredientStore((s) => s.loadPriceHistory);
   const loadSuppliers = useSupplierStore((s) => s.loadSuppliers);
+  const loadIngredientCategories = useIngredientCategoryStore((s) => s.loadItems);
+  const loadPackageUnits = usePackageUnitStore((s) => s.loadItems);
 
   useEffect(() => {
     loadIngredients();
     loadSuppliers();
+    loadIngredientCategories();
+    loadPackageUnits();
     if (ingredientId) loadPriceHistory(ingredientId);
-  }, [ingredientId, loadIngredients, loadSuppliers, loadPriceHistory]);
+  }, [
+    ingredientId,
+    loadIngredients,
+    loadSuppliers,
+    loadIngredientCategories,
+    loadPackageUnits,
+    loadPriceHistory,
+  ]);
 
   if (ingredientId === null) {
     return (
       <IngredientEditorForm
         ingredientId={null}
+        initialCategoryId={null}
         initialSupplierId={null}
         initialPackagePrice={0}
         initialPackageAmount={1}
@@ -52,6 +65,7 @@ export default function IngredientEditor({ ingredientId }: IngredientEditorProps
     <IngredientEditorForm
       ingredientId={ingredientId}
       initialName={ingredient.name}
+      initialCategoryId={ingredient.categoryId}
       initialSupplierId={ingredient.supplierId}
       initialPackagePrice={ingredient.packagePrice}
       initialPackageAmount={ingredient.packageAmount}
@@ -65,6 +79,7 @@ export default function IngredientEditor({ ingredientId }: IngredientEditorProps
 interface IngredientEditorFormProps {
   ingredientId: IngredientId | null;
   initialName?: string;
+  initialCategoryId: IngredientCategoryId | null;
   initialSupplierId: SupplierId | null;
   initialPackagePrice: number;
   initialPackageAmount: number;
@@ -76,6 +91,7 @@ interface IngredientEditorFormProps {
 function IngredientEditorForm({
   ingredientId,
   initialName = "",
+  initialCategoryId,
   initialSupplierId,
   initialPackagePrice,
   initialPackageAmount,
@@ -86,8 +102,11 @@ function IngredientEditorForm({
   const router = useRouter();
   const saveIngredient = useIngredientStore((s) => s.saveIngredient);
   const suppliers = useSupplierStore((s) => s.suppliers);
+  const ingredientCategories = useIngredientCategoryStore((s) => s.items);
+  const packageUnits = usePackageUnitStore((s) => s.items);
 
   const [name, setName] = useState(initialName);
+  const [categoryId, setCategoryId] = useState<IngredientCategoryId | "">(initialCategoryId ?? "");
   const [supplierId, setSupplierId] = useState<SupplierId | "">(initialSupplierId ?? "");
   const [packagePrice, setPackagePrice] = useState(initialPackagePrice);
   const [packageAmount, setPackageAmount] = useState(initialPackageAmount);
@@ -104,6 +123,7 @@ function IngredientEditorForm({
 
     const form = {
       name,
+      categoryId: categoryId === "" ? null : categoryId,
       supplierId: supplierId === "" ? null : supplierId,
       packagePrice,
       packageAmount,
@@ -140,6 +160,22 @@ function IngredientEditorForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+      </div>
+
+      <div>
+        <label htmlFor="ingredient-category">카테고리</label>
+        <select
+          id="ingredient-category"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value as IngredientCategoryId | "")}
+        >
+          <option value="">카테고리 없음</option>
+          {ingredientCategories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -194,9 +230,15 @@ function IngredientEditorForm({
         <label htmlFor="ingredient-stock-unit">재고 단위</label>
         <input
           id="ingredient-stock-unit"
+          list="package-unit-options"
           value={stockUnit}
           onChange={(e) => setStockUnit(e.target.value)}
         />
+        <datalist id="package-unit-options">
+          {packageUnits.map((unit) => (
+            <option key={unit.id} value={unit.name} />
+          ))}
+        </datalist>
       </div>
 
       {errorMessage && (

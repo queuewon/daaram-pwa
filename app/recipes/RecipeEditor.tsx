@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRecipeStore } from "@/store/recipeStore";
 import { useIngredientStore } from "@/store/ingredientStore";
+import { useRecipeCategoryStore } from "@/store/labelStores";
 import { calculateRecipeCost, type CostLineItem } from "@/lib/domain/cost";
 import { scaleBatch } from "@/lib/domain/batch";
 import { parseRecipeSnapshot, type RecipeSnapshotLine } from "@/lib/domain/recipeSnapshot";
@@ -13,7 +14,7 @@ import {
   type NonNegativeNumber,
 } from "@/lib/domain/numbers";
 import type { Ingredient, RecipeVersion } from "@/lib/domain/entities";
-import type { IngredientId, RecipeId } from "@/lib/domain/ids";
+import type { IngredientId, RecipeCategoryId, RecipeId } from "@/lib/domain/ids";
 import VersionHistory from "./VersionHistory";
 
 interface RecipeLineForm {
@@ -41,16 +42,24 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
   const loadRecipes = useRecipeStore((s) => s.loadRecipes);
   const loadVersions = useRecipeStore((s) => s.loadVersions);
   const loadIngredients = useIngredientStore((s) => s.loadIngredients);
+  const loadRecipeCategories = useRecipeCategoryStore((s) => s.loadItems);
 
   useEffect(() => {
     loadIngredients();
     loadRecipes();
+    loadRecipeCategories();
     if (recipeId) loadVersions(recipeId);
-  }, [recipeId, loadIngredients, loadRecipes, loadVersions]);
+  }, [recipeId, loadIngredients, loadRecipes, loadVersions, loadRecipeCategories]);
 
   if (recipeId === null) {
     return (
-      <RecipeEditorForm recipeId={null} initialBatchSize={1000} initialLines={[]} versions={[]} />
+      <RecipeEditorForm
+        recipeId={null}
+        initialCategoryId={null}
+        initialBatchSize={1000}
+        initialLines={[]}
+        versions={[]}
+      />
     );
   }
 
@@ -78,6 +87,7 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
     <RecipeEditorForm
       recipeId={recipeId}
       initialName={recipe.name}
+      initialCategoryId={recipe.categoryId}
       initialMemo={recipe.memo}
       initialBatchSize={snapshotResult.value.batchSize}
       initialLines={snapshotResult.value.lines.map(toLineForm)}
@@ -89,6 +99,7 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
 interface RecipeEditorFormProps {
   recipeId: RecipeId | null;
   initialName?: string;
+  initialCategoryId: RecipeCategoryId | null;
   initialMemo?: string;
   initialBatchSize: number;
   initialLines: RecipeLineForm[];
@@ -98,6 +109,7 @@ interface RecipeEditorFormProps {
 function RecipeEditorForm({
   recipeId,
   initialName = "",
+  initialCategoryId,
   initialMemo = "",
   initialBatchSize,
   initialLines,
@@ -106,8 +118,10 @@ function RecipeEditorForm({
   const router = useRouter();
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const ingredients = useIngredientStore((s) => s.ingredients);
+  const recipeCategories = useRecipeCategoryStore((s) => s.items);
 
   const [name, setName] = useState(initialName);
+  const [categoryId, setCategoryId] = useState<RecipeCategoryId | "">(initialCategoryId ?? "");
   const [memo, setMemo] = useState(initialMemo);
   const [batchSize, setBatchSize] = useState(initialBatchSize);
   const [lines, setLines] = useState<RecipeLineForm[]>(initialLines);
@@ -191,7 +205,7 @@ function RecipeEditorForm({
 
     const form = {
       name,
-      categoryId: null,
+      categoryId: categoryId === "" ? null : categoryId,
       batchSize,
       memo,
       lines: lines
@@ -228,6 +242,22 @@ function RecipeEditorForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+      </div>
+
+      <div>
+        <label htmlFor="recipe-category">카테고리</label>
+        <select
+          id="recipe-category"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value as RecipeCategoryId | "")}
+        >
+          <option value="">카테고리 없음</option>
+          {recipeCategories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

@@ -2,10 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "./db";
 import {
   checklistRepository,
+  ingredientCategoryRepository,
   ingredientPriceHistoryRepository,
   ingredientRepository,
   listIngredientPriceHistoryByIngredientId,
   listRecipeVersionsByRecipeId,
+  packageUnitRepository,
+  recipeCategoryRepository,
   recipeRepository,
   recipeVersionRepository,
   supplierRepository,
@@ -13,14 +16,20 @@ import {
 import type {
   DailyChecklist,
   Ingredient,
+  IngredientCategory,
   IngredientPriceHistory,
+  PackageUnit,
+  RecipeCategory,
   RecipeVersion,
   Supplier,
 } from "../domain/entities";
 import type {
   DailyChecklistId,
+  IngredientCategoryId,
   IngredientId,
   IngredientPriceHistoryId,
+  PackageUnitId,
+  RecipeCategoryId,
   RecipeId,
   RecipeVersionId,
   SupplierId,
@@ -50,6 +59,9 @@ afterEach(async () => {
   await db.recipe_versions.clear();
   await db.suppliers.clear();
   await db.ingredient_price_history.clear();
+  await db.recipe_categories.clear();
+  await db.ingredient_categories.clear();
+  await db.package_units.clear();
 });
 
 describe("recipeRepository (재수출 확인)", () => {
@@ -219,5 +231,50 @@ describe("listIngredientPriceHistoryByIngredientId", () => {
     );
 
     expect(result).toEqual({ ok: true, value: [] });
+  });
+});
+
+describe("recipeCategoryRepository", () => {
+  it("create/get 라운드트립된다", async () => {
+    const category: RecipeCategory = {
+      id: "rc-1" as RecipeCategoryId,
+      name: "빙과류",
+      colorHex: "#ff8800",
+    };
+    await recipeCategoryRepository.create(category);
+
+    expect(await recipeCategoryRepository.get(category.id)).toEqual({
+      ok: true,
+      value: category,
+    });
+  });
+});
+
+describe("ingredientCategoryRepository", () => {
+  it("create/get 라운드트립된다", async () => {
+    const category: IngredientCategory = {
+      id: "ic-1" as IngredientCategoryId,
+      name: "유제품",
+      colorHex: "#00aaff",
+    };
+    await ingredientCategoryRepository.create(category);
+
+    expect(await ingredientCategoryRepository.get(category.id)).toEqual({
+      ok: true,
+      value: category,
+    });
+  });
+});
+
+describe("packageUnitRepository", () => {
+  it("create/get 라운드트립된다", async () => {
+    const unit: PackageUnit = {
+      id: "pu-1" as PackageUnitId,
+      name: "박스",
+      colorHex: "#22cc55",
+    };
+    await packageUnitRepository.create(unit);
+
+    expect(await packageUnitRepository.get(unit.id)).toEqual({ ok: true, value: unit });
   });
 });

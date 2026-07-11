@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "../lib/infra/db";
 import { useIngredientStore } from "./ingredientStore";
-import type { IngredientId } from "../lib/domain/ids";
+import type { IngredientCategoryId, IngredientId } from "../lib/domain/ids";
 
 beforeEach(async () => {
   await db.open();
@@ -16,6 +16,7 @@ afterEach(async () => {
 function validForm(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     name: "우유",
+    categoryId: null,
     supplierId: null,
     packagePrice: 1000,
     packageAmount: 500,
@@ -101,6 +102,34 @@ describe("ingredientStore.saveIngredient — 수정", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.type).toBe("NotFound");
+  });
+});
+
+describe("ingredientStore.saveIngredient — categoryId", () => {
+  it("생성 시 폼의 categoryId를 반영한다", async () => {
+    const result = await useIngredientStore.getState().saveIngredient({
+      ingredientId: null,
+      form: validForm({ categoryId: "category-1" as IngredientCategoryId }),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.categoryId).toBe("category-1");
+  });
+
+  it("수정 시 폼의 categoryId로 교체한다", async () => {
+    const created = await useIngredientStore.getState().saveIngredient({
+      ingredientId: null,
+      form: validForm({ categoryId: "category-1" as IngredientCategoryId }),
+    });
+    if (!created.ok) throw new Error("test setup");
+
+    const updated = await useIngredientStore.getState().saveIngredient({
+      ingredientId: created.value.id,
+      form: validForm({ categoryId: "category-2" as IngredientCategoryId }),
+    });
+
+    expect(updated.ok).toBe(true);
+    if (updated.ok) expect(updated.value.categoryId).toBe("category-2");
   });
 });
 

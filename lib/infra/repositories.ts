@@ -1,7 +1,10 @@
 import {
   dailyChecklistSchema,
+  ingredientCategorySchema,
   ingredientPriceHistorySchema,
   ingredientSchema,
+  packageUnitSchema,
+  recipeCategorySchema,
   recipeSchema,
   recipeVersionSchema,
   supplierSchema,
@@ -9,15 +12,21 @@ import {
 import type {
   DailyChecklist,
   Ingredient,
+  IngredientCategory,
   IngredientPriceHistory,
+  PackageUnit,
   Recipe,
+  RecipeCategory,
   RecipeVersion,
   Supplier,
 } from "../domain/entities";
 import type {
   DailyChecklistId,
+  IngredientCategoryId,
   IngredientId,
   IngredientPriceHistoryId,
+  PackageUnitId,
+  RecipeCategoryId,
   RecipeId,
   RecipeVersionId,
   SupplierId,
@@ -47,6 +56,18 @@ export const ingredientPriceHistoryRepository = createRepository<
   IngredientPriceHistory,
   IngredientPriceHistoryId
 >(db.ingredient_price_history, ingredientPriceHistorySchema);
+export const recipeCategoryRepository = createRepository<RecipeCategory, RecipeCategoryId>(
+  db.recipe_categories,
+  recipeCategorySchema,
+);
+export const ingredientCategoryRepository = createRepository<
+  IngredientCategory,
+  IngredientCategoryId
+>(db.ingredient_categories, ingredientCategorySchema);
+export const packageUnitRepository = createRepository<PackageUnit, PackageUnitId>(
+  db.package_units,
+  packageUnitSchema,
+);
 
 export async function listRecipeVersionsByRecipeId(
   recipeId: RecipeId,
