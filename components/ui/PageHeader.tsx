@@ -5,11 +5,12 @@ import type { ReactNode } from "react";
 
 export interface PageHeaderProps {
   title: string;
+  subtitle?: string;
   onBack?: () => void;
   actions?: ReactNode;
 }
 
-export function PageHeader({ title, onBack, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, onBack, actions }: PageHeaderProps) {
   const router = useRouter();
 
   return (
@@ -22,7 +23,10 @@ export function PageHeader({ title, onBack, actions }: PageHeaderProps) {
       >
         ← 뒤로가기
       </button>
-      <h1 className="flex-1 truncate text-center">{title}</h1>
+      <div className="flex-1 truncate text-center">
+        <h1 className="truncate">{title}</h1>
+        {subtitle && <p className="truncate text-sm text-gray-500">{subtitle}</p>}
+      </div>
       <div className="flex shrink-0 justify-end">{actions}</div>
     </header>
   );

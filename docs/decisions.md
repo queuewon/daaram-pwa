@@ -47,3 +47,8 @@ Design Decisions — daaram-pwa
 2026-07-12 | 브랜드 로고는 public/brand/indigo-gelato-heart.png(요청됨) 대신 실제로 존재하는 indigo-gelato-heart.jpg를 그대로 사용 | 요청한 파일 확장자가 저장소에 없었고, 사용자가 확인 질문에서 기존 .jpg 그대로 쓰기로 확정함
 2026-07-12 | app/checklist/page.tsx의 로컬 todayDateString()을 lib/domain/date.ts로 추출해 홈 화면과 공유 | 오늘 생산 카드가 같은 "오늘 날짜" 문자열을 필요로 하게 되어 2번째 사용처가 생김 — 로직 변경 없이 위치만 이동, 형식(YYYY-MM-DD) 검증 테스트 1개 추가
 2026-07-12 | 오늘 생산 카드의 빈 상태에서 기존 EmptyState 컴포넌트를 그대로 쓰고 "메뉴 추가하기" 버튼은 그 아래 별도 Link로 배치, EmptyState 자체에 버튼 슬롯을 추가하지 않음 | 버튼이 필요한 사용처가 아직 이 화면 하나뿐이라 공용 컴포넌트 인터페이스를 넓히는 것은 과설계로 판단 — 필요해지면 그때 슬롯을 추가
+2026-07-12 | 레시피 목록의 "재료 N개" 표시를 위해 recipe_versions 테이블을 목록 페이지에서도 bulk 로드하기로 함(store/recipeStore.ts에 versions와 분리된 allVersions/loadAllVersions 신설) | "레이아웃 재구성" 요청 범위를 넘어서는 데이터 로딩이라 사용자에게 확인 후 진행 — 기존 versions/loadVersions(상세 페이지의 단일 레시피 이력용)와 같은 필드를 쓰면 목록↔상세 이동 시 서로 다른 목적의 데이터가 덮어써지는 충돌이 생겨 분리함
+2026-07-12 | 레시피별 최신 버전 선정 로직(latestVersionByRecipeId)을 lib/domain/recipeVersion.ts에 순수함수로 추가, 재료 개수 자체는 기존 parseRecipeSnapshot을 그대로 재사용(새 파싱 로직 없음) | 최신 버전 선정에 versionNo 비교라는 실질 분기가 있어 vitest로 검증할 가치가 있다고 판단 — 스냅샷 파싱은 이미 검증된 함수라 재구현하지 않음
+2026-07-12 | 레시피 검색+카테고리 필터 AND 조합을 lib/domain/recipeFilter.ts 순수함수(filterRecipes)로 분리, UI에는 if문을 두지 않음 | 요청에 명시된 요구사항 — 검색어 trim+대소문자 무시, categoryId=null("전체")은 카테고리 없는 레시피도 포함하되 특정 카테고리 지정 시엔 제외되는 경계를 테스트로 고정
+2026-07-12 | components/ui/PageHeader.tsx에 옵션 subtitle prop을 추가(기존 6개 화면은 미전달 시 렌더링 변화 없음) | 레시피 목록 헤더에 "총 N개" 부제가 필요해져 두 번째 실사용처가 생김 — 하위 호환되는 옵션 확장이라 새 인터페이스를 만드는 것과는 다르다고 판단
+2026-07-12 | 레시피 목록의 "새 레시피" 버튼을 사각형 텍스트 링크에서 얇은 brand 테두리의 원형 "+" 버튼으로 교체 | 요청된 "우측 원형 + 버튼" 디자인을 반영하되, 카드/배지에 이미 쓰인 "얇은 보더, 그림자 거의 없음" 톤을 유지

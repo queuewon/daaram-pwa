@@ -25,8 +25,10 @@ export interface SaveRecipeInput {
 interface RecipeStoreState {
   recipes: Recipe[];
   versions: RecipeVersion[];
+  allVersions: RecipeVersion[];
   loadRecipes: () => Promise<void>;
   loadVersions: (recipeId: RecipeId) => Promise<void>;
+  loadAllVersions: () => Promise<void>;
   saveRecipe: (input: SaveRecipeInput) => Promise<Result<Recipe, SaveRecipeError>>;
   removeRecipe: (id: RecipeId) => Promise<void>;
 }
@@ -34,6 +36,7 @@ interface RecipeStoreState {
 export const useRecipeStore = create<RecipeStoreState>((set) => ({
   recipes: [],
   versions: [],
+  allVersions: [],
 
   loadRecipes: async () => {
     const result = await recipeRepository.list();
@@ -43,6 +46,11 @@ export const useRecipeStore = create<RecipeStoreState>((set) => ({
   loadVersions: async (recipeId) => {
     const result = await listRecipeVersionsByRecipeId(recipeId);
     if (result.ok) set({ versions: result.value });
+  },
+
+  loadAllVersions: async () => {
+    const result = await recipeVersionRepository.list();
+    if (result.ok) set({ allVersions: result.value.items });
   },
 
   saveRecipe: async ({ recipeId, form }) => {

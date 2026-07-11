@@ -23,3 +23,18 @@ export function buildRecipeVersion(input: BuildRecipeVersionInput): RecipeVersio
     createdAt: input.createdAt,
   };
 }
+
+export function latestVersionByRecipeId(
+  versions: readonly RecipeVersion[],
+): ReadonlyMap<RecipeId, RecipeVersion> {
+  const result = new Map<RecipeId, RecipeVersion>();
+
+  for (const version of versions) {
+    const current = result.get(version.recipeId);
+    if (!current || version.versionNo > current.versionNo) {
+      result.set(version.recipeId, version);
+    }
+  }
+
+  return result;
+}
