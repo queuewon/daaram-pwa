@@ -101,3 +101,53 @@ describe("importBackup 대량 소실 방지 (F5)", () => {
     expect(await db.recipes.toArray()).toEqual([]);
   });
 });
+
+describe("importBackup 트랜잭션 원자성 (F5)", () => {
+  it("뒤쪽 테이블 쓰기가 실패하면 이미 처리된 앞쪽 테이블 변경분까지 전부 롤백된다", async () => {
+    await addRecipe("r1");
+    const beforeRecipes = await db.recipes.toArray();
+    const beforeVersions = await db.recipe_versions.toArray();
+
+    const backup = await exportBackup();
+    // recipe_versions에 동일 id를 가진 레코드 2개를 넣어 bulkAdd가 ConstraintError로
+    // 실패하도록 강제한다 — recipes는 이미 clear+bulkAdd된 뒤에 실패해야 롤백을 검증할 수 있다.
+    const corruptedBackup = {
+      ...backup,
+      data: {
+        ...backup.data,
+        recipes: [
+          {
+            id: "new-recipe" as RecipeId,
+            name: "새 레시피",
+            categoryId: null,
+            batchSize: pos(1000),
+            memo: "",
+            createdAt: "2026-07-11T00:00:00.000Z",
+            updatedAt: "2026-07-11T00:00:00.000Z",
+          },
+        ],
+        recipe_versions: [
+          {
+            id: "dup-version",
+            recipeId: "new-recipe",
+            versionNo: 1,
+            snapshotJson: JSON.stringify({ batchSize: 1000, lines: [] }),
+            createdAt: "2026-07-11T00:00:00.000Z",
+          },
+          {
+            id: "dup-version",
+            recipeId: "new-recipe",
+            versionNo: 2,
+            snapshotJson: JSON.stringify({ batchSize: 1000, lines: [] }),
+            createdAt: "2026-07-11T00:00:01.000Z",
+          },
+        ],
+      },
+    };
+
+    await expect(importBackup(corruptedBackup, { forceEmpty: true })).rejects.toBeDefined();
+
+    expect(await db.recipes.toArray()).toEqual(beforeRecipes);
+    expect(await db.recipe_versions.toArray()).toEqual(beforeVersions);
+  });
+});

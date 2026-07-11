@@ -46,6 +46,37 @@ export async function exportBackup(): Promise<BackupFile> {
   });
 }
 
+export function triggerBackupDownload(backup: BackupFile, filename?: string): void {
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename ?? `daaram-backup-${backup.exportedAt.slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+
+  URL.revokeObjectURL(url);
+}
+
+export interface ReadBackupFileError {
+  type: "InvalidJson";
+}
+
+export async function readBackupFileAsJson(
+  file: File,
+): Promise<Result<unknown, ReadBackupFileError>> {
+  const text = await file.text();
+
+  try {
+    return ok(JSON.parse(text));
+  } catch {
+    // JSON.parse는 문법 오류 시 SyntaxError를 던진다 — 경계 밖으로 예외를 내보내지 않고 Result로 흡수한다.
+    return err({ type: "InvalidJson" });
+  }
+}
+
 export async function importBackup(
   raw: unknown,
   options?: ImportBackupOptions,

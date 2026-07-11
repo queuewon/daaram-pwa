@@ -20,6 +20,9 @@ export default function HomePage() {
         <Link href="/settings" className="underline">
           설정
         </Link>
+        <Link href="/backup" className="underline">
+          백업
+        </Link>
       </nav>
     </main>
   );
