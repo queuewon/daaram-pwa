@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+body {
+  @apply text-gray-900 antialiased;
+}
+
+main {
+  @apply mx-auto max-w-2xl space-y-6 p-6;
+}
+
+h1 {
+  @apply text-xl font-bold;
+}
+
+h2 {
+  @apply text-lg font-semibold;
+}
+
+section {
+  @apply space-y-3 border-t border-gray-200 pt-4;
+}
+
+label {
+  @apply block text-sm font-medium text-gray-700;
+}
+
+input,
+textarea,
+select {
+  @apply rounded border border-gray-300 px-2 py-1;
+}
+
+button {
+  @apply rounded border border-gray-400 px-3 py-1 hover:bg-gray-100;
+}

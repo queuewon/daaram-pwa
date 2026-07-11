@@ -1,6 +1,10 @@
 declare const brand: unique symbol;
 export type Branded<T, B extends string> = T & { readonly [brand]: B };
 
+export function generateId<B extends string>(): Branded<string, B> {
+  return crypto.randomUUID() as Branded<string, B>;
+}
+
 export type RecipeId = Branded<string, "RecipeId">;
 export type RecipeVersionId = Branded<string, "RecipeVersionId">;
 export type IngredientId = Branded<string, "IngredientId">;
