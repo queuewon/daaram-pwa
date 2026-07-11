@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useChecklistStore } from "@/store/checklistStore";
 import { useRecipeStore } from "@/store/recipeStore";
 import { calculateChecklistProgress } from "@/lib/domain/checklistProgress";
+import { todayDateString } from "@/lib/domain/date";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -16,10 +17,6 @@ const STATUS_LABEL: Record<DailyChecklistStatus, string> = {
   in_progress: "진행중",
   done: "완료",
 };
-
-function todayDateString(): string {
-  return new Date().toLocaleDateString("sv-SE");
-}
 
 export default function ChecklistPage() {
   const [date, setDate] = useState(todayDateString);
