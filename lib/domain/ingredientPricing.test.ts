@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computePricePerGram, hasPackagePriceChanged } from "./ingredientPricing";
+import {
+  computePriceDeltas,
+  computePricePerGram,
+  hasPackagePriceChanged,
+} from "./ingredientPricing";
 import { parseNonNegativeNumber, parsePositiveNumber } from "./numbers";
 
 function nn(n: number) {
@@ -63,5 +67,52 @@ describe("hasPackagePriceChanged", () => {
         { packagePrice: 1200, packageAmount: 400 },
       ),
     ).toBe(true);
+  });
+});
+
+describe("computePriceDeltas", () => {
+  it("항목이 1건이면 first이고 amountKrw는 0이다", () => {
+    expect(computePriceDeltas([{ packagePrice: 1000 }])).toEqual([
+      { direction: "first", amountKrw: 0 },
+    ]);
+  });
+
+  it("최신이 이전보다 비싸면 up과 차액을 반환한다", () => {
+    expect(computePriceDeltas([{ packagePrice: 1200 }, { packagePrice: 1000 }])).toEqual([
+      { direction: "up", amountKrw: 200 },
+      { direction: "first", amountKrw: 0 },
+    ]);
+  });
+
+  it("최신이 이전보다 싸면 down과 차액을 반환한다", () => {
+    expect(computePriceDeltas([{ packagePrice: 800 }, { packagePrice: 1000 }])).toEqual([
+      { direction: "down", amountKrw: 200 },
+      { direction: "first", amountKrw: 0 },
+    ]);
+  });
+
+  it("가격이 동일하면 flat과 0을 반환한다", () => {
+    expect(computePriceDeltas([{ packagePrice: 1000 }, { packagePrice: 1000 }])).toEqual([
+      { direction: "flat", amountKrw: 0 },
+      { direction: "first", amountKrw: 0 },
+    ]);
+  });
+
+  it("3건 이상이면 각 항목이 배열상 바로 다음(시간상 직전) 항목과 비교된다", () => {
+    expect(
+      computePriceDeltas([
+        { packagePrice: 1200 }, // vs 1000 → up 200
+        { packagePrice: 1000 }, // vs 900 → up 100
+        { packagePrice: 900 }, // 최초
+      ]),
+    ).toEqual([
+      { direction: "up", amountKrw: 200 },
+      { direction: "up", amountKrw: 100 },
+      { direction: "first", amountKrw: 0 },
+    ]);
+  });
+
+  it("빈 배열이면 빈 배열을 반환한다", () => {
+    expect(computePriceDeltas([])).toEqual([]);
   });
 });
