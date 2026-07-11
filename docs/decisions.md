@@ -19,3 +19,5 @@ Design Decisions — daaram-pwa
 2026-07-11 | 레시피 CRUD 구현 시 Recipe 엔티티에 재료 구성(lines)을 두지 않고, lines의 유일한 원천을 RecipeVersion.snapshotJson으로 한정함(recipes 테이블 스키마 변경 없음) | 저장할 때마다 새 버전 스냅샷이 자동 생성되는 요구와 자연히 맞아떨어지고, recipes 테이블에 lines를 추가했다면 IndexedDB v3 마이그레이션과 백업 스키마 버전업이 함께 필요했을 것 — 근거 없는 스키마 변경을 피함
 2026-07-11 | 버전 "복원"은 과거 데이터를 덮어쓰지 않고 선택한 스냅샷을 편집 폼 상태로만 불러옴 — 저장을 눌러야 새 버전(versionNo 최댓값+1)으로 append됨 | 이력을 append-only로 유지해 실수로 과거 버전을 삭제/훼손할 수 없게 함
 2026-07-11 | 레시피 에디터 UI는 jsdom/@testing-library 없이(신규 의존성 승인 없이) vitest 자동 테스트 대상에서 제외하고 /verify로 브라우저에서 직접 확인함 | vitest.config.ts가 environment:"node"라 RTL 도입은 별도 승인 필요 사항 — 이번 범위에서 새 의존성을 추가하지 않기로 함
+2026-07-11 | 재료 CRUD 구현 시 categoryId는 계속 null 고정, IngredientCategory 관리 UI를 만들지 않음(레시피 categoryId 결정 연장) | 카테고리 CRUD가 이번 요구사항(재료 CRUD·가격이력·재고표시·공급업체)에 없어 근거 없는 범위 확장을 피함
+2026-07-11 | 공급업체 삭제 시 참조 무결성(그 공급업체를 쓰는 재료가 있어도) 강제하지 않음 | supplierId가 nullable이고 이 레포 전체에 FK 강제 사례가 없어(레시피 삭제도 daily_checklist를 정리하지 않음) 선례를 따름 — 필요해지면 그때 추가

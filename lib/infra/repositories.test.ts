@@ -2,17 +2,39 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "./db";
 import {
   checklistRepository,
+  ingredientPriceHistoryRepository,
   ingredientRepository,
+  listIngredientPriceHistoryByIngredientId,
   listRecipeVersionsByRecipeId,
   recipeRepository,
   recipeVersionRepository,
+  supplierRepository,
 } from "./repositories";
-import type { DailyChecklist, Ingredient, RecipeVersion } from "../domain/entities";
-import type { DailyChecklistId, IngredientId, RecipeId, RecipeVersionId } from "../domain/ids";
-import { parsePositiveNumber } from "../domain/numbers";
+import type {
+  DailyChecklist,
+  Ingredient,
+  IngredientPriceHistory,
+  RecipeVersion,
+  Supplier,
+} from "../domain/entities";
+import type {
+  DailyChecklistId,
+  IngredientId,
+  IngredientPriceHistoryId,
+  RecipeId,
+  RecipeVersionId,
+  SupplierId,
+} from "../domain/ids";
+import { parseNonNegativeNumber, parsePositiveNumber } from "../domain/numbers";
 
 function pos(n: number) {
   const result = parsePositiveNumber(n);
+  if (!result.ok) throw new Error("test setup");
+  return result.value;
+}
+
+function nn(n: number) {
+  const result = parseNonNegativeNumber(n);
   if (!result.ok) throw new Error("test setup");
   return result.value;
 }
@@ -26,6 +48,8 @@ afterEach(async () => {
   await db.daily_checklist.clear();
   await db.recipes.clear();
   await db.recipe_versions.clear();
+  await db.suppliers.clear();
+  await db.ingredient_price_history.clear();
 });
 
 describe("recipeRepository (재수출 확인)", () => {
@@ -123,6 +147,76 @@ describe("listRecipeVersionsByRecipeId", () => {
 
   it("해당 recipeId의 버전이 없으면 빈 배열을 반환한다", async () => {
     const result = await listRecipeVersionsByRecipeId("no-such-recipe" as RecipeId);
+
+    expect(result).toEqual({ ok: true, value: [] });
+  });
+});
+
+describe("supplierRepository", () => {
+  it("create/get 라운드트립된다", async () => {
+    const supplier: Supplier = {
+      id: "supplier-1" as SupplierId,
+      name: "동네유업",
+      contact: "010-1234-5678",
+      memo: "",
+    };
+    await supplierRepository.create(supplier);
+
+    expect(await supplierRepository.get(supplier.id)).toEqual({ ok: true, value: supplier });
+  });
+});
+
+function priceHistory(
+  id: string,
+  ingredientId: string,
+  packagePrice: number,
+  recordedAt: string,
+): IngredientPriceHistory {
+  return {
+    id: id as IngredientPriceHistoryId,
+    ingredientId: ingredientId as IngredientId,
+    packagePrice: nn(packagePrice),
+    packageAmount: pos(500),
+    recordedAt,
+  };
+}
+
+describe("ingredientPriceHistoryRepository", () => {
+  it("create/get 라운드트립된다", async () => {
+    const entry = priceHistory("ph1", "ing1", 1000, "2026-07-11T00:00:00.000Z");
+    await ingredientPriceHistoryRepository.create(entry);
+
+    expect(await ingredientPriceHistoryRepository.get(entry.id)).toEqual({
+      ok: true,
+      value: entry,
+    });
+  });
+});
+
+describe("listIngredientPriceHistoryByIngredientId", () => {
+  it("해당 ingredientId의 이력만 recordedAt 내림차순으로 반환한다", async () => {
+    await ingredientPriceHistoryRepository.create(
+      priceHistory("ph1", "ing1", 1000, "2026-07-01T00:00:00.000Z"),
+    );
+    await ingredientPriceHistoryRepository.create(
+      priceHistory("ph2", "ing1", 1200, "2026-07-10T00:00:00.000Z"),
+    );
+    await ingredientPriceHistoryRepository.create(
+      priceHistory("ph3", "ing2", 500, "2026-07-05T00:00:00.000Z"),
+    );
+
+    const result = await listIngredientPriceHistoryByIngredientId("ing1" as IngredientId);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.map((h) => h.id)).toEqual(["ph2", "ph1"]);
+    }
+  });
+
+  it("해당 ingredientId의 이력이 없으면 빈 배열을 반환한다", async () => {
+    const result = await listIngredientPriceHistoryByIngredientId(
+      "no-such-ingredient" as IngredientId,
+    );
 
     expect(result).toEqual({ ok: true, value: [] });
   });
