@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveLabelColorScheme } from "./labelColor";
+import { CATEGORY_COLOR_PRESETS, deriveLabelColorScheme } from "./labelColor";
 
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -92,5 +92,32 @@ describe("deriveLabelColorScheme", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(lightness(result.value.textHex)).toBeLessThanOrEqual(lightness(original));
+  });
+});
+
+describe("CATEGORY_COLOR_PRESETS", () => {
+  it("정확히 10개의 프리셋을 제공한다", () => {
+    expect(CATEGORY_COLOR_PRESETS).toHaveLength(10);
+  });
+
+  it("모든 프리셋이 #RRGGBB 형식이다", () => {
+    for (const hex of CATEGORY_COLOR_PRESETS) {
+      expect(hex).toMatch(/^#[0-9a-fA-F]{6}$/);
+    }
+  });
+
+  it("스펙에 명시된 10개 hex와 순서까지 정확히 일치한다", () => {
+    expect(CATEGORY_COLOR_PRESETS).toEqual([
+      "#C2185B",
+      "#0369A1",
+      "#166534",
+      "#854D0E",
+      "#6D28D9",
+      "#78350F",
+      "#B91C1C",
+      "#0F766E",
+      "#3730A3",
+      "#1F2937",
+    ]);
   });
 });

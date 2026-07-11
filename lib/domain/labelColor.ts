@@ -7,6 +7,19 @@ export interface LabelColorScheme {
 
 const HEX_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
+export const CATEGORY_COLOR_PRESETS: readonly string[] = [
+  "#C2185B",
+  "#0369A1",
+  "#166534",
+  "#854D0E",
+  "#6D28D9",
+  "#78350F",
+  "#B91C1C",
+  "#0F766E",
+  "#3730A3",
+  "#1F2937",
+];
+
 const BACKGROUND_LIGHTNESS = 0.94;
 const TEXT_LIGHTNESS = 0.25;
 

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ColorSwatchPicker } from "./ColorSwatchPicker";
 
 const DEFAULT_COLOR = "#9ca3af";
 
@@ -17,7 +18,7 @@ interface Label<TId> {
 }
 
 interface LabelManagerProps<L extends Label<TId>, TId extends string> {
-  title: string;
+  title?: string;
   items: L[];
   loadItems: () => void;
   saveLabel: (input: { id: TId | null; form: unknown }) => Promise<Result<L, SaveLabelError>>;
@@ -39,7 +40,7 @@ export default function LabelManager<L extends Label<TId>, TId extends string>({
 
   return (
     <section>
-      <h2>{title}</h2>
+      {title && <h2>{title}</h2>}
 
       {items.length === 0 ? (
         <EmptyState title="아직 등록된 항목이 없습니다" subtitle="아래에서 새로 추가해 보세요" />
@@ -83,6 +84,7 @@ interface LabelRowProps {
 function LabelRow({ item, onSave, onRemove }: LabelRowProps) {
   const [name, setName] = useState(item.name);
   const [colorHex, setColorHex] = useState(item.colorHex);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -98,21 +100,21 @@ function LabelRow({ item, onSave, onRemove }: LabelRowProps) {
 
   return (
     <li>
-      <Card accent="neutral" className="flex items-center gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-        <input
-          type="color"
-          value={colorHex}
-          onChange={(e) => setColorHex(e.target.value)}
-          aria-label="색상"
-        />
-        <Badge label={name || item.name} colorHex={colorHex} />
-        <button type="button" onClick={handleSave} disabled={isSaving}>
-          저장
-        </button>
-        <button type="button" onClick={onRemove}>
-          삭제
-        </button>
+      <Card accent="neutral" className="space-y-2">
+        <div className="flex items-center gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
+          <Badge label={name || item.name} colorHex={colorHex} />
+          <button type="button" onClick={() => setColorPickerOpen((open) => !open)}>
+            색상 변경
+          </button>
+          <button type="button" onClick={handleSave} disabled={isSaving}>
+            저장
+          </button>
+          <button type="button" onClick={onRemove}>
+            삭제
+          </button>
+        </div>
+        {colorPickerOpen && <ColorSwatchPicker value={colorHex} onChange={setColorHex} />}
         {errorMessage && <span className="text-sm text-red-700">{errorMessage}</span>}
       </Card>
     </li>
@@ -143,22 +145,19 @@ function AddLabelRow({ onSave }: AddLabelRowProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 pt-2">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="새 이름"
-        className="flex-1"
-      />
-      <input
-        type="color"
-        value={colorHex}
-        onChange={(e) => setColorHex(e.target.value)}
-        aria-label="색상"
-      />
-      <button type="button" onClick={handleAdd} disabled={isSaving}>
-        추가
-      </button>
+    <div className="space-y-2 pt-2">
+      <div className="flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="새 이름"
+          className="flex-1"
+        />
+        <button type="button" onClick={handleAdd} disabled={isSaving}>
+          추가
+        </button>
+      </div>
+      <ColorSwatchPicker value={colorHex} onChange={setColorHex} />
       {errorMessage && <span className="text-sm text-red-700">{errorMessage}</span>}
     </div>
   );
