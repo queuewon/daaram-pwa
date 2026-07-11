@@ -1,0 +1,246 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRecipeStore } from "@/store/recipeStore";
+import { useIngredientStore } from "@/store/ingredientStore";
+import { useRecipeCategoryStore } from "@/store/labelStores";
+import { calculateRecipeCost, type CostLineItem } from "@/lib/domain/cost";
+import { BATCH_STEP_GRAM, scaleBatch, stepBatchSize } from "@/lib/domain/batch";
+import { parseRecipeSnapshot, type RecipeSnapshotLine } from "@/lib/domain/recipeSnapshot";
+import {
+  parseNonNegativeNumber,
+  type NonNegativeNumber,
+  type PositiveNumber,
+} from "@/lib/domain/numbers";
+import type { Ingredient, Recipe, RecipeVersion } from "@/lib/domain/entities";
+import type { IngredientId, RecipeId } from "@/lib/domain/ids";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import VersionHistory from "./VersionHistory";
+
+interface RecipeDetailProps {
+  recipeId: RecipeId;
+}
+
+function toNonNegative(n: number): NonNegativeNumber {
+  const clamped = Number.isFinite(n) ? Math.max(0, n) : 0;
+  const result = parseNonNegativeNumber(clamped);
+  return result.ok ? result.value : (0 as NonNegativeNumber);
+}
+
+export default function RecipeDetail({ recipeId }: RecipeDetailProps) {
+  const recipes = useRecipeStore((s) => s.recipes);
+  const versions = useRecipeStore((s) => s.versions);
+  const loadRecipes = useRecipeStore((s) => s.loadRecipes);
+  const loadVersions = useRecipeStore((s) => s.loadVersions);
+  const ingredients = useIngredientStore((s) => s.ingredients);
+  const loadIngredients = useIngredientStore((s) => s.loadIngredients);
+  const recipeCategories = useRecipeCategoryStore((s) => s.items);
+  const loadRecipeCategories = useRecipeCategoryStore((s) => s.loadItems);
+
+  useEffect(() => {
+    loadRecipes();
+    loadVersions(recipeId);
+    loadIngredients();
+    loadRecipeCategories();
+  }, [recipeId, loadRecipes, loadVersions, loadIngredients, loadRecipeCategories]);
+
+  const recipe = recipes.find((r) => r.id === recipeId);
+  const latestVersion = versions.find((v) => v.recipeId === recipeId);
+
+  if (!recipe || !latestVersion) {
+    return (
+      <main>
+        <p>불러오는 중...</p>
+      </main>
+    );
+  }
+
+  const snapshotResult = parseRecipeSnapshot(latestVersion.snapshotJson);
+  if (!snapshotResult.ok) {
+    return (
+      <main>
+        <p role="alert">저장된 레시피 데이터가 손상되어 있습니다.</p>
+      </main>
+    );
+  }
+
+  const category = recipe.categoryId
+    ? recipeCategories.find((c) => c.id === recipe.categoryId)
+    : undefined;
+
+  return (
+    <RecipeDetailView
+      recipe={recipe}
+      category={category}
+      lines={snapshotResult.value.lines}
+      ingredients={ingredients}
+      versions={versions}
+    />
+  );
+}
+
+interface RecipeDetailViewProps {
+  recipe: Recipe;
+  category?: { name: string; colorHex: string };
+  lines: readonly RecipeSnapshotLine[];
+  ingredients: Ingredient[];
+  versions: RecipeVersion[];
+}
+
+function RecipeDetailView({
+  recipe,
+  category,
+  lines,
+  ingredients,
+  versions,
+}: RecipeDetailViewProps) {
+  const router = useRouter();
+  const removeRecipe = useRecipeStore((s) => s.removeRecipe);
+
+  const [batchSize, setBatchSize] = useState<PositiveNumber>(recipe.batchSize);
+  const [pendingDelete, setPendingDelete] = useState(false);
+
+  const ingredientMap = useMemo(
+    () => new Map<IngredientId, Ingredient>(ingredients.map((i) => [i.id, i])),
+    [ingredients],
+  );
+
+  const scaledLines = useMemo(
+    () =>
+      scaleBatch({
+        baseYieldGram: recipe.batchSize,
+        targetYieldGram: batchSize,
+        lines,
+      }),
+    [recipe.batchSize, batchSize, lines],
+  );
+
+  const costResult = useMemo(() => {
+    const costLines: CostLineItem[] = scaledLines.map((line) => ({
+      ingredientId: line.ingredientId,
+      quantityGram: toNonNegative(line.scaledQuantityGram),
+      unitPriceKrwPerGram: ingredientMap.get(line.ingredientId)?.pricePerGram ?? 0,
+    }));
+    return calculateRecipeCost(costLines);
+  }, [scaledLines, ingredientMap]);
+
+  function handleStep(delta: number) {
+    setBatchSize((current) => stepBatchSize(current, delta));
+  }
+
+  async function handleDelete() {
+    await removeRecipe(recipe.id);
+    setPendingDelete(false);
+    router.push("/recipes");
+  }
+
+  return (
+    <main>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          aria-label="뒤로가기"
+          onClick={() => router.back()}
+          className="shrink-0 border-none px-1 py-1 text-sm text-gray-600 hover:bg-transparent hover:text-gray-900"
+        >
+          ← 뒤로가기
+        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          <button type="button" onClick={() => setPendingDelete(true)}>
+            삭제
+          </button>
+          <Link href={`/recipes/${recipe.id}/edit`}>수정</Link>
+        </div>
+      </div>
+
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold">{recipe.name}</h1>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          {category && <Badge label={category.name} colorHex={category.colorHex} />}
+          <span>재료 {lines.length}개</span>
+        </div>
+      </header>
+
+      {recipe.memo.trim() !== "" && (
+        <Card accent="neutral">
+          <p className="whitespace-pre-wrap text-sm text-gray-700">{recipe.memo}</p>
+        </Card>
+      )}
+
+      <section>
+        <h2>배치량</h2>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="배치량 감소"
+            onClick={() => handleStep(-BATCH_STEP_GRAM)}
+          >
+            −
+          </button>
+          <span className="min-w-[6rem] text-center text-lg font-semibold">
+            {batchSize.toLocaleString()}
+          </span>
+          <button
+            type="button"
+            aria-label="배치량 증가"
+            onClick={() => handleStep(BATCH_STEP_GRAM)}
+          >
+            +
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h2>재료</h2>
+        <table className="w-full border border-gray-200 text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-gray-500">
+              <th className="px-3 py-2 font-medium">재료명</th>
+              <th className="px-3 py-2 font-medium">사용량(g)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {scaledLines.map((line) => (
+              <tr key={line.ingredientId}>
+                <td className="px-3 py-2">
+                  {ingredientMap.get(line.ingredientId)?.name ?? line.ingredientId}
+                </td>
+                <td className="px-3 py-2">
+                  {Math.round(line.scaledQuantityGram).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <div className="rounded-2xl border border-ingredient bg-ingredient-soft p-4 shadow-sm">
+        <p className="text-sm text-gray-700">총 원가</p>
+        <p className="text-2xl font-bold text-danger">
+          {costResult.totalCostKrw.toLocaleString()}원
+        </p>
+      </div>
+
+      <section>
+        <VersionHistory versions={versions} limit={3} />
+        <Link href={`/recipes/${recipe.id}/history`} className="text-sm underline">
+          전체 보기
+        </Link>
+      </section>
+
+      <ConfirmDialog
+        open={pendingDelete}
+        title="레시피 삭제"
+        description={`"${recipe.name}" 레시피를 삭제하시겠습니까? 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(false)}
+      />
+    </main>
+  );
+}

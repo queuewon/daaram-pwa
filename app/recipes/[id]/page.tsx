@@ -1,14 +1,14 @@
 "use client";
 
 import { use } from "react";
-import RecipeEditor from "../RecipeEditor";
+import RecipeDetail from "../RecipeDetail";
 import type { RecipeId } from "@/lib/domain/ids";
 
-interface EditRecipePageProps {
+interface RecipeDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function EditRecipePage({ params }: EditRecipePageProps) {
+export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { id } = use(params);
-  return <RecipeEditor key={id} recipeId={id as RecipeId} />;
+  return <RecipeDetail key={id} recipeId={id as RecipeId} />;
 }

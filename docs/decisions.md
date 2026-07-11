@@ -52,3 +52,8 @@ Design Decisions — daaram-pwa
 2026-07-12 | 레시피 검색+카테고리 필터 AND 조합을 lib/domain/recipeFilter.ts 순수함수(filterRecipes)로 분리, UI에는 if문을 두지 않음 | 요청에 명시된 요구사항 — 검색어 trim+대소문자 무시, categoryId=null("전체")은 카테고리 없는 레시피도 포함하되 특정 카테고리 지정 시엔 제외되는 경계를 테스트로 고정
 2026-07-12 | components/ui/PageHeader.tsx에 옵션 subtitle prop을 추가(기존 6개 화면은 미전달 시 렌더링 변화 없음) | 레시피 목록 헤더에 "총 N개" 부제가 필요해져 두 번째 실사용처가 생김 — 하위 호환되는 옵션 확장이라 새 인터페이스를 만드는 것과는 다르다고 판단
 2026-07-12 | 레시피 목록의 "새 레시피" 버튼을 사각형 텍스트 링크에서 얇은 brand 테두리의 원형 "+" 버튼으로 교체 | 요청된 "우측 원형 + 버튼" 디자인을 반영하되, 카드/배지에 이미 쓰인 "얇은 보더, 그림자 거의 없음" 톤을 유지
+2026-07-12 | 레시피 상세 화면을 신설하며 라우팅을 재편: /recipes/[id]는 읽기 전용 상세(신규 RecipeDetail.tsx), 기존 수정 화면(RecipeEditor)은 /recipes/[id]/edit로 이동, /recipes/[id]/history를 이력 전체보기로 신설 | 상세 요청서가 "상단 뒤로가기 + 수정/삭제 버튼"을 명시해 REST식 상세/수정 분리가 필요했음 — 목록 카드 링크(`/recipes/${id}`)는 코드 변경 없이 자동으로 상세로 연결됨, 사용자 확인 후 진행
+2026-07-12 | app/recipes/VersionHistory.tsx의 onRestore/limit prop을 optional로 확장(기존 필수 onRestore 전달 호출부는 동작 불변) | 상세 화면의 "최근 3건 프리뷰"(복원 불가, limit=3)와 이력 페이지(복원 불가, 전체)에서 재사용하기 위함 — 복원은 편집 폼 상태로만 불러오는 개념이라 편집 화면 밖에서는 버튼 자체를 숨김
+2026-07-12 | 총 원가 카드의 노란 배경은 새 디자인 토큰을 추가하지 않고 기존 --color-ingredient-soft(#fef3c7)를 재사용, Card 컴포넌트(bg-white 고정) 대신 직접 마크업(rounded-2xl border border-ingredient bg-ingredient-soft)으로 작성 | Card의 bg-white와 배경색 클래스가 유틸리티 특이도 동률로 충돌할 수 있어 재사용을 포기 — 사용자가 새 토큰 추가 대신 기존 토큰 재사용을 확정
+2026-07-12 | 레시피 상세 화면의 배치량 스테퍼(±500g, 최소 500g)를 lib/domain/batch.ts에 stepBatchSize 순수함수로 추가하고 vitest(red→green)로 검증, 화면 자체는 2026-07-11 결정(jsdom 미도입)에 따라 계속 /verify 브라우저 확인 대상으로 남김 | 클램프 로직은 순수 계산이라 단위테스트 가치가 있으나 화면 렌더는 기존 결정을 뒤집을 근거가 없음
+2026-07-12 | 이번 라운드는 GATE_PASSWORD를 알 수 없어(.env 접근 금지 원칙) /verify 브라우저 구동 확인을 생략하고 tsc/vitest/eslint 통과로 마무리 — known gap | 사용자가 직접 확인하기로 함, 코드 리뷰 시 브라우저 미검증 상태였음을 유의

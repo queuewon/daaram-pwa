@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scaleBatch } from "./batch";
+import { scaleBatch, stepBatchSize } from "./batch";
 import { parseNonNegativeNumber, parsePositiveNumber } from "./numbers";
 import type { IngredientId } from "./ids";
 
@@ -53,5 +53,23 @@ describe("scaleBatch", () => {
     });
 
     expect(result).toEqual([{ ingredientId: ingredientA, scaledQuantityGram: 100 }]);
+  });
+});
+
+describe("stepBatchSize", () => {
+  it("500g 단위로 증가한다", () => {
+    expect(stepBatchSize(5000, 500)).toBe(5500);
+  });
+
+  it("500g 단위로 감소한다", () => {
+    expect(stepBatchSize(5000, -500)).toBe(4500);
+  });
+
+  it("하한(500g)에서 더 감소시키려 해도 500g에 머문다", () => {
+    expect(stepBatchSize(500, -500)).toBe(500);
+  });
+
+  it("500g 배수가 아닌 값에서 감소시키면 하한 500g으로 스냅한다", () => {
+    expect(stepBatchSize(734, -500)).toBe(500);
   });
 });
