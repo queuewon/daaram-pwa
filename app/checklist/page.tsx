@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useChecklistStore } from "@/store/checklistStore";
 import { useRecipeStore } from "@/store/recipeStore";
 import { calculateChecklistProgress } from "@/lib/domain/checklistProgress";
-import type { DailyChecklistStatus } from "@/lib/domain/entities";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { DailyChecklist, DailyChecklistStatus } from "@/lib/domain/entities";
 import type { RecipeId } from "@/lib/domain/ids";
 
 const STATUS_LABEL: Record<DailyChecklistStatus, string> = {
@@ -22,6 +26,7 @@ export default function ChecklistPage() {
   const [recipeId, setRecipeId] = useState<RecipeId | "">("");
   const [batchSize, setBatchSize] = useState(1000);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DailyChecklist | null>(null);
 
   const items = useChecklistStore((s) => s.items);
   const loadByDate = useChecklistStore((s) => s.loadByDate);
@@ -55,7 +60,7 @@ export default function ChecklistPage() {
 
   return (
     <main>
-      <h1>오늘 생산 체크리스트</h1>
+      <PageHeader title="오늘 생산 체크리스트" />
 
       <div>
         <label htmlFor="checklist-date">날짜</label>
@@ -103,21 +108,47 @@ export default function ChecklistPage() {
         )}
       </section>
 
-      <ul className="divide-y divide-gray-200 border border-gray-200 rounded">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between gap-2 px-3 py-2">
-            <span>
-              {recipeMap.get(item.recipeId)?.name ?? item.recipeId} · {item.batchSize}g
-            </span>
-            <button type="button" onClick={() => cycleStatus(item.id)}>
-              {STATUS_LABEL[item.status]}
-            </button>
-            <button type="button" onClick={() => removeChecklistItem(item.id)}>
-              삭제
-            </button>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <EmptyState
+          title="오늘 등록된 생산 항목이 없습니다"
+          subtitle="위에서 레시피를 선택해 추가해 보세요"
+        />
+      ) : (
+        <ul className="space-y-3">
+          {items.map((item) => (
+            <li key={item.id}>
+              <Card accent="data" className="flex items-center justify-between gap-2">
+                <span>
+                  {recipeMap.get(item.recipeId)?.name ?? item.recipeId} · {item.batchSize}g
+                </span>
+                <button type="button" onClick={() => cycleStatus(item.id)}>
+                  {STATUS_LABEL[item.status]}
+                </button>
+                <button type="button" onClick={() => setPendingDelete(item)}>
+                  삭제
+                </button>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="생산 항목 삭제"
+        description={`"${
+          pendingDelete
+            ? (recipeMap.get(pendingDelete.recipeId)?.name ?? pendingDelete.recipeId)
+            : ""
+        }" 항목을 삭제하시겠습니까? 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) removeChecklistItem(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </main>
   );
 }

@@ -15,6 +15,8 @@ import {
 } from "@/lib/domain/numbers";
 import type { Ingredient, RecipeVersion } from "@/lib/domain/entities";
 import type { IngredientId, RecipeCategoryId, RecipeId } from "@/lib/domain/ids";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge } from "@/components/ui/Badge";
 import VersionHistory from "./VersionHistory";
 
 interface RecipeLineForm {
@@ -230,9 +232,12 @@ function RecipeEditorForm({
     router.push(`/recipes/${result.value.id}`);
   }
 
+  const selectedCategory =
+    categoryId === "" ? undefined : recipeCategories.find((c) => c.id === categoryId);
+
   return (
     <main>
-      <h1>{recipeId ? "레시피 수정" : "새 레시피"}</h1>
+      <PageHeader title={recipeId ? "레시피 수정" : "새 레시피"} />
 
       <div>
         <label htmlFor="recipe-name">이름</label>
@@ -258,6 +263,9 @@ function RecipeEditorForm({
             </option>
           ))}
         </select>
+        {selectedCategory && (
+          <Badge label={selectedCategory.name} colorHex={selectedCategory.colorHex} />
+        )}
       </div>
 
       <div>

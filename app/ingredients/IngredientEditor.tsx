@@ -7,6 +7,8 @@ import { useSupplierStore } from "@/store/supplierStore";
 import { useIngredientCategoryStore, usePackageUnitStore } from "@/store/labelStores";
 import type { IngredientPriceHistory } from "@/lib/domain/entities";
 import type { IngredientCategoryId, IngredientId, SupplierId } from "@/lib/domain/ids";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Badge } from "@/components/ui/Badge";
 import PriceHistory from "./PriceHistory";
 
 interface IngredientEditorProps {
@@ -148,9 +150,12 @@ function IngredientEditorForm({
     router.push(`/ingredients/${result.value.id}`);
   }
 
+  const selectedCategory =
+    categoryId === "" ? undefined : ingredientCategories.find((c) => c.id === categoryId);
+
   return (
     <main>
-      <h1>{ingredientId ? "재료 수정" : "새 재료"}</h1>
+      <PageHeader title={ingredientId ? "재료 수정" : "새 재료"} />
 
       <div>
         <label htmlFor="ingredient-name">이름</label>
@@ -176,6 +181,9 @@ function IngredientEditorForm({
             </option>
           ))}
         </select>
+        {selectedCategory && (
+          <Badge label={selectedCategory.name} colorHex={selectedCategory.colorHex} />
+        )}
       </div>
 
       <div>

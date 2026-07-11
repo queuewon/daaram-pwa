@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import type { Result } from "@/lib/domain/result";
 import type { SaveLabelError } from "@/store/createLabelStore";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const DEFAULT_COLOR = "#9ca3af";
 
@@ -27,6 +31,8 @@ export default function LabelManager<L extends Label<TId>, TId extends string>({
   saveLabel,
   removeLabel,
 }: LabelManagerProps<L, TId>) {
+  const [pendingDelete, setPendingDelete] = useState<L | null>(null);
+
   useEffect(() => {
     loadItems();
   }, [loadItems]);
@@ -34,17 +40,36 @@ export default function LabelManager<L extends Label<TId>, TId extends string>({
   return (
     <section>
       <h2>{title}</h2>
-      <ul className="divide-y divide-gray-200 border border-gray-200 rounded">
-        {items.map((item) => (
-          <LabelRow
-            key={item.id}
-            item={item}
-            onSave={(form) => saveLabel({ id: item.id, form })}
-            onRemove={() => removeLabel(item.id)}
-          />
-        ))}
-      </ul>
+
+      {items.length === 0 ? (
+        <EmptyState title="아직 등록된 항목이 없습니다" subtitle="아래에서 새로 추가해 보세요" />
+      ) : (
+        <ul className="space-y-3">
+          {items.map((item) => (
+            <LabelRow
+              key={item.id}
+              item={item}
+              onSave={(form) => saveLabel({ id: item.id, form })}
+              onRemove={() => setPendingDelete(item)}
+            />
+          ))}
+        </ul>
+      )}
+
       <AddLabelRow onSave={(form) => saveLabel({ id: null, form })} />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="항목 삭제"
+        description={`"${pendingDelete?.name ?? ""}" 항목을 삭제하시겠습니까? 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) removeLabel(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </section>
   );
 }
@@ -72,21 +97,24 @@ function LabelRow({ item, onSave, onRemove }: LabelRowProps) {
   }
 
   return (
-    <li className="flex items-center gap-2 px-3 py-2">
-      <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-      <input
-        type="color"
-        value={colorHex}
-        onChange={(e) => setColorHex(e.target.value)}
-        aria-label="색상"
-      />
-      <button type="button" onClick={handleSave} disabled={isSaving}>
-        저장
-      </button>
-      <button type="button" onClick={onRemove}>
-        삭제
-      </button>
-      {errorMessage && <span className="text-sm text-red-700">{errorMessage}</span>}
+    <li>
+      <Card accent="neutral" className="flex items-center gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
+        <input
+          type="color"
+          value={colorHex}
+          onChange={(e) => setColorHex(e.target.value)}
+          aria-label="색상"
+        />
+        <Badge label={name || item.name} colorHex={colorHex} />
+        <button type="button" onClick={handleSave} disabled={isSaving}>
+          저장
+        </button>
+        <button type="button" onClick={onRemove}>
+          삭제
+        </button>
+        {errorMessage && <span className="text-sm text-red-700">{errorMessage}</span>}
+      </Card>
     </li>
   );
 }

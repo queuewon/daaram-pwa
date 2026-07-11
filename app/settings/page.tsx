@@ -6,6 +6,7 @@ import {
   useRecipeCategoryStore,
 } from "@/store/labelStores";
 import LabelManager from "./LabelManager";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function SettingsPage() {
   const recipeCategories = useRecipeCategoryStore((s) => s.items);
@@ -25,7 +26,7 @@ export default function SettingsPage() {
 
   return (
     <main>
-      <h1>설정</h1>
+      <PageHeader title="설정" />
       <LabelManager
         title="레시피 카테고리"
         items={recipeCategories}

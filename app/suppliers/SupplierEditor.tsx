@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupplierStore } from "@/store/supplierStore";
 import type { SupplierId } from "@/lib/domain/ids";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 interface SupplierEditorProps {
   supplierId: SupplierId | null;
@@ -85,7 +86,7 @@ function SupplierEditorForm({
 
   return (
     <main>
-      <h1>{supplierId ? "공급업체 수정" : "새 공급업체"}</h1>
+      <PageHeader title={supplierId ? "공급업체 수정" : "새 공급업체"} />
 
       <div>
         <label htmlFor="supplier-name">이름</label>

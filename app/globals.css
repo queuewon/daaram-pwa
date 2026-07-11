@@ -11,12 +11,17 @@
   --color-price-down: #16a34a;
 }
 
+:root {
+  --tab-bar-height: 3.5rem;
+}
+
 body {
   @apply text-gray-900 antialiased;
 }
 
 main {
   @apply mx-auto max-w-2xl space-y-6 p-6;
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 1.5rem);
 }
 
 h1 {
