@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand: #c2185b;
+  --color-brand-soft: #fce7f0;
+  --color-ingredient: #92400e;
+  --color-ingredient-soft: #fef3c7;
+  --color-data: #2563eb;
+  --color-data-soft: #dbeafe;
+  --color-danger: #dc2626;
+  --color-price-down: #16a34a;
+}
+
 body {
   @apply text-gray-900 antialiased;
 }

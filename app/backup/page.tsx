@@ -7,6 +7,14 @@ import {
   readBackupFileAsJson,
   triggerBackupDownload,
 } from "@/lib/infra/backup";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+
+interface PendingConfirm {
+  title: string;
+  description: string;
+  onConfirm: () => void;
+}
+
 const TABLE_LABEL: Record<string, string> = {
   recipes: "레시피",
   recipe_versions: "레시피 수정이력",
@@ -22,6 +30,7 @@ const TABLE_LABEL: Record<string, string> = {
 export default function BackupPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   async function handleExport() {
     setErrorMessage(null);
@@ -43,12 +52,15 @@ export default function BackupPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "가져오기를 진행하면 현재 저장된 모든 데이터가 이 백업 파일 내용으로 완전히 대체됩니다. 계속하시겠습니까?",
-    );
-    if (!confirmed) return;
-
-    await runImport(readResult.value);
+    setPendingConfirm({
+      title: "가져오기 확인",
+      description:
+        "가져오기를 진행하면 현재 저장된 모든 데이터가 이 백업 파일 내용으로 완전히 대체됩니다. 계속하시겠습니까?",
+      onConfirm: () => {
+        setPendingConfirm(null);
+        void runImport(readResult.value);
+      },
+    });
   }
 
   async function runImport(raw: unknown, forceEmpty = false) {
@@ -60,10 +72,14 @@ export default function BackupPage() {
           const tableNames = result.error.emptiedTables
             .map((name) => TABLE_LABEL[name] ?? name)
             .join(", ");
-          const confirmed = window.confirm(
-            `백업 파일에 ${tableNames}가 0개입니다. 현재 데이터가 모두 삭제됩니다. 정말 진행하시겠습니까?`,
-          );
-          if (confirmed) await runImport(raw, true);
+          setPendingConfirm({
+            title: "데이터 삭제 확인",
+            description: `백업 파일에 ${tableNames}가 0개입니다. 현재 데이터가 모두 삭제됩니다. 정말 진행하시겠습니까?`,
+            onConfirm: () => {
+              setPendingConfirm(null);
+              void runImport(raw, true);
+            },
+          });
           return;
         }
 
@@ -103,6 +119,15 @@ export default function BackupPage() {
           {errorMessage}
         </p>
       )}
+
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        title={pendingConfirm?.title ?? ""}
+        description={pendingConfirm?.description ?? ""}
+        destructive
+        onConfirm={() => pendingConfirm?.onConfirm()}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </main>
   );
 }
