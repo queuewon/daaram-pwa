@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "./db";
-import { exportBackup, importBackup } from "./backup";
-import type { RecipeId } from "../domain/ids";
+import { buildEmptyBackupFile, exportBackup, importBackup, wipeAllData } from "./backup";
+import { backupFileSchema, BACKUP_TABLE_NAMES } from "./backup.schema";
+import type { IngredientCategoryId, RecipeId, SupplierId } from "../domain/ids";
 import { parsePositiveNumber } from "../domain/numbers";
 
 function pos(n: number) {
@@ -149,5 +150,43 @@ describe("importBackup 트랜잭션 원자성 (F5)", () => {
 
     expect(await db.recipes.toArray()).toEqual(beforeRecipes);
     expect(await db.recipe_versions.toArray()).toEqual(beforeVersions);
+  });
+});
+
+describe("buildEmptyBackupFile", () => {
+  it("backupFileSchema를 통과하는 유효한 빈 백업을 생성한다", () => {
+    const empty = buildEmptyBackupFile();
+    expect(backupFileSchema.safeParse(empty).success).toBe(true);
+  });
+
+  it("9개 테이블 모두 빈 배열이다", () => {
+    const empty = buildEmptyBackupFile();
+    for (const name of BACKUP_TABLE_NAMES) {
+      expect(empty.data[name]).toEqual([]);
+    }
+  });
+});
+
+describe("wipeAllData (F5)", () => {
+  it("여러 테이블에 데이터가 있어도 전부 비운다", async () => {
+    await addRecipe("r1");
+    await db.ingredient_categories.add({
+      id: "cat-1" as IngredientCategoryId,
+      name: "유제품",
+      colorHex: "#C2185B",
+    });
+    await db.suppliers.add({
+      id: "sup-1" as SupplierId,
+      name: "공급업체",
+      contact: "",
+      memo: "",
+    });
+
+    const result = await wipeAllData();
+
+    expect(result).toEqual({ ok: true, value: undefined });
+    for (const name of BACKUP_TABLE_NAMES) {
+      expect(await db[name].count()).toBe(0);
+    }
   });
 });

@@ -58,7 +58,7 @@ export default function HomePage() {
         ) : (
           <div className="space-y-2">
             <p className="font-semibold">
-              {progress.doneCount} / {progress.total} 완료
+              {progress.doneCount.toLocaleString()} / {progress.total.toLocaleString()} 완료
             </p>
             <div className="h-2 rounded-full bg-gray-100">
               <div

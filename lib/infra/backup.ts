@@ -26,6 +26,22 @@ async function replaceAll<T, TKey extends IndexableType>(
   await table.bulkAdd(rows as T[]);
 }
 
+export function buildEmptyBackupFile(): BackupFile {
+  const data = Object.fromEntries(BACKUP_TABLE_NAMES.map((name) => [name, []]));
+
+  return backupFileSchema.parse({
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    data,
+  });
+}
+
+// [F5] IndexedDB 전체 삭제. 새 삭제 로직을 작성하지 않고 이미 트랜잭션 원자성이
+// 검증된 importBackup의 "빈 백업으로 덮어쓰기" 경로를 그대로 재사용한다.
+export async function wipeAllData(): Promise<Result<void, BackupImportError>> {
+  return importBackup(buildEmptyBackupFile(), { forceEmpty: true });
+}
+
 export async function exportBackup(): Promise<BackupFile> {
   const data = {
     recipes: await db.recipes.toArray(),

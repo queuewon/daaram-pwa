@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useChecklistStore } from "@/store/checklistStore";
 import { useRecipeStore } from "@/store/recipeStore";
 import { calculateChecklistProgress } from "@/lib/domain/checklistProgress";
-import { todayDateString } from "@/lib/domain/date";
+import { formatDateWithWeekday, todayDateString } from "@/lib/domain/date";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import AddChecklistItemModal from "./AddChecklistItemModal";
 import type { DailyChecklist, DailyChecklistStatus } from "@/lib/domain/entities";
-import type { RecipeId } from "@/lib/domain/ids";
 
 const STATUS_LABEL: Record<DailyChecklistStatus, string> = {
   pending: "대기",
@@ -18,16 +18,20 @@ const STATUS_LABEL: Record<DailyChecklistStatus, string> = {
   done: "완료",
 };
 
+const STATUS_TEXT_CLASS: Record<DailyChecklistStatus, string> = {
+  pending: "text-gray-600",
+  in_progress: "text-data",
+  done: "text-price-down",
+};
+
 export default function ChecklistPage() {
-  const [date, setDate] = useState(todayDateString);
-  const [recipeId, setRecipeId] = useState<RecipeId | "">("");
-  const [batchSize, setBatchSize] = useState(1000);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const date = todayDateString();
+
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DailyChecklist | null>(null);
 
   const items = useChecklistStore((s) => s.items);
   const loadByDate = useChecklistStore((s) => s.loadByDate);
-  const addChecklistItem = useChecklistStore((s) => s.addChecklistItem);
   const cycleStatus = useChecklistStore((s) => s.cycleStatus);
   const removeChecklistItem = useChecklistStore((s) => s.removeChecklistItem);
 
@@ -45,80 +49,48 @@ export default function ChecklistPage() {
   const recipeMap = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const progress = useMemo(() => calculateChecklistProgress(items), [items]);
 
-  async function handleAdd() {
-    setErrorMessage(null);
-    const result = await addChecklistItem({ recipeId, date, batchSize });
-    if (!result.ok) {
-      setErrorMessage("입력값을 확인해 주세요 (레시피 선택, 배치량 0 초과).");
-      return;
-    }
-    setBatchSize(1000);
-  }
-
   return (
     <main>
-      <PageHeader title="오늘 생산 체크리스트" />
-
-      <div>
-        <label htmlFor="checklist-date">날짜</label>
-        <input
-          id="checklist-date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      <p className="font-semibold">
-        {progress.doneCount}/{progress.total} 완료 · {Math.round(progress.ratio * 100)}%
-      </p>
-
-      <section>
-        <h2>항목 추가</h2>
-        <div className="flex items-center gap-2">
-          <select value={recipeId} onChange={(e) => setRecipeId(e.target.value as RecipeId | "")}>
-            <option value="">레시피 선택</option>
-            {recipes.map((recipe) => (
-              <option key={recipe.id} value={recipe.id}>
-                {recipe.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            className="w-24"
-            value={batchSize}
-            onChange={(e) => setBatchSize(Number(e.target.value))}
-          />
-          <span>g</span>
-          <button type="button" onClick={handleAdd}>
-            추가
-          </button>
-        </div>
-        {errorMessage && (
-          <p
-            role="alert"
-            className="rounded border border-red-300 bg-red-50 px-3 py-2 text-red-700"
+      <PageHeader
+        title="오늘 생산"
+        subtitle={formatDateWithWeekday(date)}
+        actions={
+          <button
+            type="button"
+            aria-label="메뉴 추가"
+            onClick={() => setAddModalOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-data text-lg leading-none text-data hover:bg-data-soft"
           >
-            {errorMessage}
-          </p>
-        )}
-      </section>
+            +
+          </button>
+        }
+      />
+
+      <Card accent="data" className="space-y-2">
+        <p className="font-semibold">
+          {progress.doneCount.toLocaleString()} / {progress.total.toLocaleString()} 완료
+        </p>
+        <div className="h-2 rounded-full bg-gray-100">
+          <div className="h-2 rounded-full bg-data" style={{ width: `${progress.ratio * 100}%` }} />
+        </div>
+      </Card>
 
       {items.length === 0 ? (
-        <EmptyState
-          title="오늘 등록된 생산 항목이 없습니다"
-          subtitle="위에서 레시피를 선택해 추가해 보세요"
-        />
+        <EmptyState title="비어있네. 일해" subtitle="오늘 만들 메뉴를 추가해보도록" />
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
             <li key={item.id}>
               <Card accent="data" className="flex items-center justify-between gap-2">
                 <span>
-                  {recipeMap.get(item.recipeId)?.name ?? item.recipeId} · {item.batchSize}g
+                  {recipeMap.get(item.recipeId)?.name ?? item.recipeId} ·{" "}
+                  {item.batchSize.toLocaleString()}g
                 </span>
-                <button type="button" onClick={() => cycleStatus(item.id)}>
+                <button
+                  type="button"
+                  onClick={() => cycleStatus(item.id)}
+                  className={`rounded-full bg-gray-100 px-3 py-1 text-sm font-medium ${STATUS_TEXT_CLASS[item.status]}`}
+                >
                   {STATUS_LABEL[item.status]}
                 </button>
                 <button type="button" onClick={() => setPendingDelete(item)}>
@@ -128,6 +100,14 @@ export default function ChecklistPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {addModalOpen && (
+        <AddChecklistItemModal
+          recipes={recipes}
+          date={date}
+          onClose={() => setAddModalOpen(false)}
+        />
       )}
 
       <ConfirmDialog

@@ -111,7 +111,7 @@ export default function RecipesPage() {
                   </div>
                   <p className="text-sm text-gray-500">재료 {ingredientCount}개</p>
                   <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
-                    <span>{recipe.batchSize}g</span>
+                    <span>{recipe.batchSize.toLocaleString()}g</span>
                     <button type="button" onClick={() => setPendingDelete(recipe)}>
                       삭제
                     </button>

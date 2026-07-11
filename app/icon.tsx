@@ -1,9 +1,15 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
+export const runtime = "nodejs";
 export const size = { width: 192, height: 192 };
 export const contentType = "image/png";
 
-export default function Icon() {
+export default async function Icon() {
+  const imageBuffer = await readFile(join(process.cwd(), "public/brand/indigo-gelato-mascot.jpg"));
+  const imageSrc = `data:image/jpeg;base64,${imageBuffer.toString("base64")}`;
+
   return new ImageResponse(
     <div
       style={{
@@ -13,12 +19,15 @@ export default function Icon() {
         alignItems: "center",
         justifyContent: "center",
         background: "#4f46e5",
-        color: "#ffffff",
-        fontSize: 96,
-        fontFamily: "sans-serif",
       }}
     >
-      다
+      <img
+        src={imageSrc}
+        alt="Indigo Gelato"
+        width={size.width}
+        height={size.height}
+        style={{ objectFit: "cover", width: "100%", height: "100%" }}
+      />
     </div>,
     { ...size },
   );
