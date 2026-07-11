@@ -101,3 +101,17 @@ export async function listIngredientPriceHistoryByIngredientId(
   items.sort((a, b) => (a.recordedAt < b.recordedAt ? 1 : a.recordedAt > b.recordedAt ? -1 : 0));
   return ok(items);
 }
+
+export async function listChecklistItemsByDate(
+  date: string,
+): Promise<Result<DailyChecklist[], never>> {
+  const rows = await db.daily_checklist.where("date").equals(date).toArray();
+  const items: DailyChecklist[] = [];
+
+  for (const row of rows) {
+    const parsed = dailyChecklistSchema.safeParse(row);
+    if (parsed.success) items.push(parsed.data);
+  }
+
+  return ok(items);
+}

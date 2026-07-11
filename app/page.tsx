@@ -5,6 +5,9 @@ export default function HomePage() {
     <main>
       <h1>다아람</h1>
       <nav className="flex gap-3">
+        <Link href="/checklist" className="underline">
+          오늘 생산
+        </Link>
         <Link href="/recipes" className="underline">
           레시피
         </Link>

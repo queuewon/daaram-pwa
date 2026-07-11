@@ -23,3 +23,5 @@ Design Decisions — daaram-pwa
 2026-07-11 | 공급업체 삭제 시 참조 무결성(그 공급업체를 쓰는 재료가 있어도) 강제하지 않음 | supplierId가 nullable이고 이 레포 전체에 FK 강제 사례가 없어(레시피 삭제도 daily_checklist를 정리하지 않음) 선례를 따름 — 필요해지면 그때 추가
 2026-07-11 | RecipeCategory/IngredientCategory/PackageUnit 라벨 CRUD를 createLabelStore(제네릭 팩토리) + LabelManager(제네릭 UI) 하나씩으로 3종 공용 구현, 각각 별도 스토어/컴포넌트 파일로 만들지 않음 | 세 라벨 타입이 {id,name,colorHex}로 구조가 완전히 동일하고(entities.schema.ts의 labelSchema<B>() 팩토리와 동일 근거), lib/infra/repository.ts의 createRepository 제네릭화 선례를 그대로 따름
 2026-07-11 | PackageUnit을 Ingredient.stockUnit의 FK로 바꾸지 않고 자유입력 + datalist 자동완성으로만 연결 | v1→v2 마이그레이션에서 이미 Ingredient.packageUnitId가 제거된 상태였고, FK로 강제하려면 엔티티 스키마 변경(IndexedDB v3 마이그레이션)이 필요해 근거 없는 스키마 변경을 피함 — 이전 결정(재료 categoryId 미노출)은 이번 작업으로 뒤집혀 Recipe/Ingredient 모두 categoryId 선택 UI가 생김
+2026-07-11 | 오늘 생산 체크리스트에 요구사항에 없던 removeChecklistItem(삭제)을 추가함 | 잘못 추가한 항목을 지울 방법이 없으면 실사용이 막힘 — 레시피/재료/공급업체/라벨 등 지금까지 만든 모든 목록 기능에 삭제가 있었던 선례를 따름
+2026-07-11 | DailyChecklist에 createdAt이 없어 같은 날짜 내 항목 정렬 순서를 보장하지 않음(Dexie 기본 반환 순서에 의존) | 스키마 변경(필드 추가) 없이 가기로 결정 — 순서가 실제로 문제 되면 그때 필드 추가 + 마이그레이션 논의

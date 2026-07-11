@@ -5,6 +5,7 @@ import {
   ingredientCategoryRepository,
   ingredientPriceHistoryRepository,
   ingredientRepository,
+  listChecklistItemsByDate,
   listIngredientPriceHistoryByIngredientId,
   listRecipeVersionsByRecipeId,
   packageUnitRepository,
@@ -276,5 +277,36 @@ describe("packageUnitRepository", () => {
     await packageUnitRepository.create(unit);
 
     expect(await packageUnitRepository.get(unit.id)).toEqual({ ok: true, value: unit });
+  });
+});
+
+function checklistItem(id: string, date: string, recipeId = "r1"): DailyChecklist {
+  return {
+    id: id as DailyChecklistId,
+    recipeId: recipeId as RecipeId,
+    date,
+    batchSize: pos(1000),
+    status: "pending",
+  };
+}
+
+describe("listChecklistItemsByDate", () => {
+  it("해당 날짜의 항목만 반환한다", async () => {
+    await checklistRepository.create(checklistItem("dc-1", "2026-07-11"));
+    await checklistRepository.create(checklistItem("dc-2", "2026-07-11"));
+    await checklistRepository.create(checklistItem("dc-3", "2026-07-12"));
+
+    const result = await listChecklistItemsByDate("2026-07-11");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.map((item) => item.id).sort()).toEqual(["dc-1", "dc-2"]);
+    }
+  });
+
+  it("해당 날짜에 항목이 없으면 빈 배열을 반환한다", async () => {
+    const result = await listChecklistItemsByDate("2026-01-01");
+
+    expect(result).toEqual({ ok: true, value: [] });
   });
 });
