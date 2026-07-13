@@ -9,23 +9,19 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { filterIngredients } from "@/lib/domain/ingredientFilter";
-import type { Ingredient } from "@/lib/domain/entities";
 import type { IngredientCategoryId } from "@/lib/domain/ids";
 
 export default function IngredientsPage() {
   const ingredients = useIngredientStore((s) => s.ingredients);
   const loadIngredients = useIngredientStore((s) => s.loadIngredients);
-  const removeIngredient = useIngredientStore((s) => s.removeIngredient);
   const suppliers = useSupplierStore((s) => s.suppliers);
   const loadSuppliers = useSupplierStore((s) => s.loadSuppliers);
   const ingredientCategories = useIngredientCategoryStore((s) => s.items);
   const loadIngredientCategories = useIngredientCategoryStore((s) => s.loadItems);
 
-  const [pendingDelete, setPendingDelete] = useState<Ingredient | null>(null);
   const [searchText, setSearchText] = useState("");
   const [categoryId, setCategoryId] = useState<IngredientCategoryId | null>(null);
 
@@ -49,25 +45,33 @@ export default function IngredientsPage() {
     <main>
       <PageHeader
         title="재료"
+        subtitle="가격과 재고를 한눈에"
+        tone="ingredient"
         actions={
           <Link
             href="/ingredients/new"
             aria-label="새 재료"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-ingredient text-lg leading-none text-ingredient hover:bg-ingredient-soft"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-ingredient text-2xl leading-none text-white shadow-sm hover:opacity-90"
           >
             +
           </Link>
         }
       />
 
-      <SearchBar value={searchText} onChange={setSearchText} placeholder="재료 이름 검색" />
+      <SearchBar value={searchText} onChange={setSearchText} placeholder="재료 검색" />
 
-      <div className="flex gap-2 overflow-x-auto">
-        <FilterChip label="전체" active={categoryId === null} onClick={() => setCategoryId(null)} />
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <FilterChip
+          label="전체"
+          tone="ingredient"
+          active={categoryId === null}
+          onClick={() => setCategoryId(null)}
+        />
         {ingredientCategories.map((category) => (
           <FilterChip
             key={category.id}
             label={category.name}
+            tone="ingredient"
             active={categoryId === category.id}
             onClick={() => setCategoryId(category.id)}
           />
@@ -94,52 +98,25 @@ export default function IngredientsPage() {
               : undefined;
             return (
               <li key={ingredient.id}>
-                <Card accent="ingredient" className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Link
-                      href={`/ingredients/${ingredient.id}`}
-                      className="flex items-center gap-2 font-bold"
-                    >
-                      {ingredient.name}
+                <Link href={`/ingredients/${ingredient.id}`} className="block">
+                  <Card accent="ingredient" className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate font-bold text-gray-900">{ingredient.name}</p>
                       {category && <Badge label={category.name} colorHex={category.colorHex} />}
-                    </Link>
-                    <span aria-hidden="true" className="text-gray-300">
-                      ›
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    현재가 {ingredient.pricePerGram.toLocaleString()}원/g · 기준{" "}
-                    {ingredient.packageAmount.toLocaleString()}g
-                  </p>
-                  <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
-                    <span>
-                      재고 {ingredient.stockCount.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      현재가 {ingredient.pricePerGram.toLocaleString()}원/g · 재고{" "}
+                      {ingredient.stockCount.toLocaleString()}
                       {ingredient.stockUnit}
                       {supplierName ? ` · ${supplierName}` : ""}
-                    </span>
-                    <button type="button" onClick={() => setPendingDelete(ingredient)}>
-                      삭제
-                    </button>
-                  </div>
-                </Card>
+                    </p>
+                  </Card>
+                </Link>
               </li>
             );
           })}
         </ul>
       )}
-
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title="재료 삭제"
-        description={`"${pendingDelete?.name ?? ""}" 재료를 삭제하시겠습니까? 되돌릴 수 없습니다.`}
-        confirmLabel="삭제"
-        destructive
-        onConfirm={() => {
-          if (pendingDelete) removeIngredient(pendingDelete.id);
-          setPendingDelete(null);
-        }}
-        onCancel={() => setPendingDelete(null)}
-      />
     </main>
   );
 }

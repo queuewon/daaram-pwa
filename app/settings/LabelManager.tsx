@@ -5,11 +5,16 @@ import type { Result } from "@/lib/domain/result";
 import type { SaveLabelError } from "@/store/createLabelStore";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { TONE_SOFT_BORDER, TONE_TEXT } from "@/components/ui/theme";
 import { ColorSwatchPicker } from "./ColorSwatchPicker";
 
 const DEFAULT_COLOR = "#9ca3af";
+
+export type LabelTone = "brand" | "ingredient" | "data";
 
 interface Label<TId> {
   id: TId;
@@ -18,7 +23,10 @@ interface Label<TId> {
 }
 
 interface LabelManagerProps<L extends Label<TId>, TId extends string> {
-  title?: string;
+  tone: LabelTone;
+  registeredTitle: string;
+  newTitle: string;
+  namePlaceholder: string;
   items: L[];
   loadItems: () => void;
   saveLabel: (input: { id: TId | null; form: unknown }) => Promise<Result<L, SaveLabelError>>;
@@ -26,7 +34,10 @@ interface LabelManagerProps<L extends Label<TId>, TId extends string> {
 }
 
 export default function LabelManager<L extends Label<TId>, TId extends string>({
-  title,
+  tone,
+  registeredTitle,
+  newTitle,
+  namePlaceholder,
   items,
   loadItems,
   saveLabel,
@@ -39,25 +50,35 @@ export default function LabelManager<L extends Label<TId>, TId extends string>({
   }, [loadItems]);
 
   return (
-    <section>
-      {title && <h2>{title}</h2>}
+    <div className="space-y-6">
+      <Card accent={tone} className="space-y-4">
+        <SectionTitle tone={tone}>{registeredTitle}</SectionTitle>
 
-      {items.length === 0 ? (
-        <EmptyState title="아직 등록된 항목이 없습니다" subtitle="아래에서 새로 추가해 보세요" />
-      ) : (
-        <ul className="space-y-3">
-          {items.map((item) => (
-            <LabelRow
-              key={item.id}
-              item={item}
-              onSave={(form) => saveLabel({ id: item.id, form })}
-              onRemove={() => setPendingDelete(item)}
-            />
-          ))}
-        </ul>
-      )}
+        {items.length === 0 ? (
+          <EmptyState title="아직 등록된 항목이 없습니다" subtitle="아래에서 새로 추가해 보세요" />
+        ) : (
+          <ul className="space-y-3">
+            {items.map((item) => (
+              <LabelRow
+                key={item.id}
+                tone={tone}
+                item={item}
+                onSave={(form) => saveLabel({ id: item.id, form })}
+                onRemove={() => setPendingDelete(item)}
+              />
+            ))}
+          </ul>
+        )}
+      </Card>
 
-      <AddLabelRow onSave={(form) => saveLabel({ id: null, form })} />
+      <Card accent={tone} className="space-y-4">
+        <SectionTitle tone={tone}>{newTitle}</SectionTitle>
+        <AddLabelRow
+          tone={tone}
+          namePlaceholder={namePlaceholder}
+          onSave={(form) => saveLabel({ id: null, form })}
+        />
+      </Card>
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -71,20 +92,21 @@ export default function LabelManager<L extends Label<TId>, TId extends string>({
         }}
         onCancel={() => setPendingDelete(null)}
       />
-    </section>
+    </div>
   );
 }
 
 interface LabelRowProps {
+  tone: LabelTone;
   item: { id: string; name: string; colorHex: string };
   onSave: (form: unknown) => Promise<Result<unknown, SaveLabelError>>;
   onRemove: () => void;
 }
 
-function LabelRow({ item, onSave, onRemove }: LabelRowProps) {
+function LabelRow({ tone, item, onSave, onRemove }: LabelRowProps) {
   const [name, setName] = useState(item.name);
   const [colorHex, setColorHex] = useState(item.colorHex);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -95,37 +117,55 @@ function LabelRow({ item, onSave, onRemove }: LabelRowProps) {
     setIsSaving(false);
     if (!result.ok) {
       setErrorMessage("저장에 실패했습니다 (이름 필수).");
+      return;
     }
+    setEditorOpen(false);
   }
 
   return (
-    <li>
-      <Card accent="neutral" className="space-y-2">
-        <div className="flex items-center gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-          <Badge label={name || item.name} colorHex={colorHex} />
-          <button type="button" onClick={() => setColorPickerOpen((open) => !open)}>
-            색상 변경
-          </button>
-          <button type="button" onClick={handleSave} disabled={isSaving}>
-            저장
-          </button>
-          <button type="button" onClick={onRemove}>
+    <li className={`space-y-3 rounded-2xl border bg-white p-3 ${TONE_SOFT_BORDER[tone]}`}>
+      <div className="flex items-center gap-3">
+        <Badge label={name || item.name} colorHex={colorHex} />
+        <button
+          type="button"
+          onClick={() => setEditorOpen((open) => !open)}
+          className="border-none px-0 text-sm text-gray-500 hover:bg-transparent hover:text-gray-800"
+        >
+          색상 변경
+        </button>
+        <div className="ml-auto">
+          <Button type="button" tone="danger" variant="soft" onClick={onRemove}>
             삭제
-          </button>
+          </Button>
         </div>
-        {colorPickerOpen && <ColorSwatchPicker value={colorHex} onChange={setColorHex} />}
-        {errorMessage && <span className="text-sm text-red-700">{errorMessage}</span>}
-      </Card>
+      </div>
+
+      {editorOpen && (
+        <div className="space-y-3 border-t border-gray-100 pt-3">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="이름"
+            className="w-full"
+          />
+          <ColorSwatchPicker value={colorHex} onChange={setColorHex} />
+          {errorMessage && <p className="text-sm text-danger">{errorMessage}</p>}
+          <Button type="button" tone={tone} variant="soft" onClick={handleSave} disabled={isSaving}>
+            저장
+          </Button>
+        </div>
+      )}
     </li>
   );
 }
 
 interface AddLabelRowProps {
+  tone: LabelTone;
+  namePlaceholder: string;
   onSave: (form: unknown) => Promise<Result<unknown, SaveLabelError>>;
 }
 
-function AddLabelRow({ onSave }: AddLabelRowProps) {
+function AddLabelRow({ tone, namePlaceholder, onSave }: AddLabelRowProps) {
   const [name, setName] = useState("");
   const [colorHex, setColorHex] = useState(DEFAULT_COLOR);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -145,20 +185,29 @@ function AddLabelRow({ onSave }: AddLabelRowProps) {
   }
 
   return (
-    <div className="space-y-2 pt-2">
-      <div className="flex items-center gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="새 이름"
-          className="flex-1"
-        />
-        <button type="button" onClick={handleAdd} disabled={isSaving}>
-          추가
-        </button>
+    <div className="space-y-4">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={namePlaceholder}
+        aria-label="새 이름"
+        className="w-full"
+      />
+      <div className="space-y-2">
+        <p className={`text-sm font-semibold ${TONE_TEXT[tone]}`}>라벨 색상</p>
+        <ColorSwatchPicker value={colorHex} onChange={setColorHex} />
       </div>
-      <ColorSwatchPicker value={colorHex} onChange={setColorHex} />
-      {errorMessage && <span className="text-sm text-red-700">{errorMessage}</span>}
+      {errorMessage && <p className="text-sm text-danger">{errorMessage}</p>}
+      <Button
+        type="button"
+        tone={tone}
+        variant="pale"
+        fullWidth
+        onClick={handleAdd}
+        disabled={isSaving}
+      >
+        추가하기
+      </Button>
     </div>
   );
 }

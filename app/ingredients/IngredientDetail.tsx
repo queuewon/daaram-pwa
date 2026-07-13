@@ -8,6 +8,9 @@ import { useSupplierStore } from "@/store/supplierStore";
 import { useIngredientCategoryStore } from "@/store/labelStores";
 import type { IngredientId } from "@/lib/domain/ids";
 import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import PriceHistory from "./PriceHistory";
 import PriceEntryModal from "./PriceEntryModal";
@@ -61,6 +64,19 @@ export default function IngredientDetail({ ingredientId }: IngredientDetailProps
     router.push("/ingredients");
   }
 
+  const infoRows: { label: string; value: string }[] = [
+    {
+      label: "현재가",
+      value: `${ingredient.packagePrice.toLocaleString()}원 / ${ingredient.packageAmount.toLocaleString()}g`,
+    },
+    { label: "기준(g)", value: `${ingredient.packageAmount.toLocaleString()} g` },
+    {
+      label: "재고",
+      value: `${ingredient.stockCount.toLocaleString()}${ingredient.stockUnit}`,
+    },
+    { label: "공급업체", value: supplier?.name ?? "-" },
+  ];
+
   return (
     <main>
       <div className="flex items-center justify-between gap-2">
@@ -70,58 +86,58 @@ export default function IngredientDetail({ ingredientId }: IngredientDetailProps
           onClick={() => router.back()}
           className="shrink-0 border-none px-1 py-1 text-sm text-gray-600 hover:bg-transparent hover:text-gray-900"
         >
-          ← 뒤로가기
+          ← 뒤로
         </button>
-        <Link href={`/ingredients/${ingredient.id}/edit`} className="shrink-0">
+        <Link
+          href={`/ingredients/${ingredient.id}/edit`}
+          className="inline-flex shrink-0 items-center rounded-full bg-ingredient-soft px-4 py-2 text-sm font-semibold text-ingredient hover:brightness-95"
+        >
           수정
         </Link>
       </div>
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold">{ingredient.name}</h1>
+      <header className="flex items-start justify-between gap-3">
+        <h1 className="text-2xl font-bold text-gray-900">{ingredient.name}</h1>
         {category && <Badge label={category.name} colorHex={category.colorHex} />}
       </header>
 
-      <section>
-        <h2>정보</h2>
-        <table className="w-full border border-gray-200 text-sm">
-          <tbody className="divide-y divide-gray-200">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">현재가</th>
-              <td className="px-3 py-2">{ingredient.pricePerGram.toLocaleString()}원/g</td>
-            </tr>
-            <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">기준(g)</th>
-              <td className="px-3 py-2">{ingredient.packageAmount.toLocaleString()}g</td>
-            </tr>
-            <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">재고</th>
-              <td className="px-3 py-2">
-                {ingredient.stockCount.toLocaleString()}
-                {ingredient.stockUnit}
-              </td>
-            </tr>
-            <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">공급업체</th>
-              <td className="px-3 py-2">{supplier?.name ?? "-"}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <Card accent="ingredient" className="divide-y divide-amber-100 p-0">
+        {infoRows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="text-sm text-gray-500">{row.label}</span>
+            <span className="font-semibold text-gray-900">{row.value}</span>
+          </div>
+        ))}
+      </Card>
 
-      <section>
-        <div className="flex items-center justify-between gap-2">
-          <h2>가격 이력</h2>
-          <button type="button" onClick={() => setPriceModalOpen(true)}>
-            + 가격 등록
-          </button>
-        </div>
-        <PriceHistory history={priceHistory} />
-      </section>
+      <div className="space-y-3">
+        <SectionTitle
+          tone="ingredient"
+          action={
+            <Button
+              type="button"
+              tone="ingredient"
+              variant="soft"
+              onClick={() => setPriceModalOpen(true)}
+            >
+              + 가격 등록
+            </Button>
+          }
+        >
+          가격 변동 이력
+        </SectionTitle>
+        <PriceHistory history={priceHistory} bare />
+      </div>
 
-      <button type="button" onClick={() => setPendingDelete(true)} className="text-danger">
+      <Button
+        type="button"
+        tone="danger"
+        variant="soft"
+        fullWidth
+        onClick={() => setPendingDelete(true)}
+      >
         재료 삭제
-      </button>
+      </Button>
 
       {priceModalOpen && (
         <PriceEntryModal ingredient={ingredient} onClose={() => setPriceModalOpen(false)} />

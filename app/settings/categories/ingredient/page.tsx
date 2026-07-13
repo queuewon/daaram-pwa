@@ -12,8 +12,12 @@ export default function IngredientCategoriesPage() {
 
   return (
     <main>
-      <PageHeader title="재료 카테고리" />
+      <PageHeader title="재료 카테고리" tone="ingredient" back />
       <LabelManager
+        tone="ingredient"
+        registeredTitle="등록된 카테고리"
+        newTitle="새 카테고리"
+        namePlaceholder="카테고리 이름"
         items={items}
         loadItems={loadItems}
         saveLabel={saveLabel}

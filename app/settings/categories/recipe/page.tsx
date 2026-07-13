@@ -12,8 +12,12 @@ export default function RecipeCategoriesPage() {
 
   return (
     <main>
-      <PageHeader title="레시피 카테고리" />
+      <PageHeader title="레시피 카테고리" tone="brand" back />
       <LabelManager
+        tone="brand"
+        registeredTitle="등록된 카테고리"
+        newTitle="새 카테고리"
+        namePlaceholder="카테고리 이름"
         items={items}
         loadItems={loadItems}
         saveLabel={saveLabel}

@@ -18,6 +18,8 @@ import type { Ingredient, Recipe, RecipeVersion } from "@/lib/domain/entities";
 import type { IngredientId, RecipeId } from "@/lib/domain/ids";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import VersionHistory from "./VersionHistory";
 
@@ -149,88 +151,105 @@ function RecipeDetailView({
         >
           ← 뒤로가기
         </button>
-        <div className="flex shrink-0 items-center gap-3">
-          <button type="button" onClick={() => setPendingDelete(true)}>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button type="button" tone="brand" variant="soft" onClick={() => setPendingDelete(true)}>
             삭제
-          </button>
-          <Link href={`/recipes/${recipe.id}/edit`}>수정</Link>
+          </Button>
+          <Link
+            href={`/recipes/${recipe.id}/edit`}
+            className="inline-flex items-center rounded-full bg-brand-soft px-4 py-2 text-sm font-semibold text-brand hover:brightness-95"
+          >
+            수정
+          </Link>
         </div>
       </div>
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold">{recipe.name}</h1>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          {category && <Badge label={category.name} colorHex={category.colorHex} />}
-          <span>재료 {lines.length}개</span>
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900">{recipe.name}</h1>
+          <p className="mt-1 text-sm text-gray-500">재료 {lines.length}개</p>
         </div>
+        {category && <Badge label={category.name} colorHex={category.colorHex} />}
       </header>
 
       {recipe.memo.trim() !== "" && (
-        <Card accent="neutral">
+        <Card accent="brand" className="space-y-1">
+          <p className="font-bold text-brand">메모</p>
           <p className="whitespace-pre-wrap text-sm text-gray-700">{recipe.memo}</p>
         </Card>
       )}
 
-      <section>
-        <h2>배치량</h2>
-        <div className="flex items-center gap-3">
+      <Card accent="brand" className="space-y-3">
+        <p className="text-sm font-medium text-gray-500">배치량 조절 (G)</p>
+        <div className="flex items-center justify-center gap-6">
           <button
             type="button"
             aria-label="배치량 감소"
             onClick={() => handleStep(-BATCH_STEP_GRAM)}
+            className="flex h-14 w-14 items-center justify-center rounded-full border-transparent bg-brand-soft text-2xl leading-none text-brand hover:brightness-95"
           >
             −
           </button>
-          <span className="min-w-[6rem] text-center text-lg font-semibold">
+          <span className="min-w-[7rem] text-center text-3xl font-bold text-brand">
             {batchSize.toLocaleString()}
           </span>
           <button
             type="button"
             aria-label="배치량 증가"
             onClick={() => handleStep(BATCH_STEP_GRAM)}
+            className="flex h-14 w-14 items-center justify-center rounded-full border-transparent bg-brand-soft text-2xl leading-none text-brand hover:brightness-95"
           >
             +
           </button>
         </div>
-      </section>
+      </Card>
 
-      <section>
-        <h2>재료</h2>
-        <table className="w-full border border-gray-200 text-sm">
+      <Card accent="brand" className="overflow-hidden p-0">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
-              <th className="px-3 py-2 font-medium">재료명</th>
-              <th className="px-3 py-2 font-medium">사용량(g)</th>
+            <tr className="border-b border-pink-100 text-left text-brand">
+              <th className="px-4 py-3 font-semibold">재료명</th>
+              <th className="px-4 py-3 text-right font-semibold">사용량(g)</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-pink-100">
             {scaledLines.map((line) => (
               <tr key={line.ingredientId}>
-                <td className="px-3 py-2">
+                <td className="px-4 py-3 text-gray-800">
                   {ingredientMap.get(line.ingredientId)?.name ?? line.ingredientId}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-4 py-3 text-right font-medium text-gray-900">
                   {Math.round(line.scaledQuantityGram).toLocaleString()}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </section>
+      </Card>
 
-      <div className="rounded-2xl border border-ingredient bg-ingredient-soft p-4 shadow-sm">
-        <p className="text-sm text-gray-700">총 원가</p>
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-ingredient-soft p-4 shadow-sm">
+        <p className="font-bold text-brand">총 원가</p>
         <p className="text-2xl font-bold text-danger">
           {costResult.totalCostKrw.toLocaleString()}원
         </p>
       </div>
 
-      <section>
-        <VersionHistory versions={versions} limit={3} />
-        <Link href={`/recipes/${recipe.id}/history`} className="text-sm underline">
-          전체 보기
-        </Link>
-      </section>
+      <div className="space-y-3">
+        <SectionTitle
+          tone="brand"
+          action={
+            <Link
+              href={`/recipes/${recipe.id}/history`}
+              className="text-sm font-semibold text-brand"
+            >
+              전체 보기
+            </Link>
+          }
+        >
+          수정이력
+        </SectionTitle>
+        <VersionHistory versions={versions} limit={3} bare />
+      </div>
 
       <ConfirmDialog
         open={pendingDelete}

@@ -12,8 +12,12 @@ export default function PackageUnitsPage() {
 
   return (
     <main>
-      <PageHeader title="포장 단위" />
+      <PageHeader title="포장 단위" tone="data" back />
       <LabelManager
+        tone="data"
+        registeredTitle="등록된 단위"
+        newTitle="새 단위"
+        namePlaceholder="단위 이름 (예: 박스)"
         items={items}
         loadItems={loadItems}
         saveLabel={saveLabel}

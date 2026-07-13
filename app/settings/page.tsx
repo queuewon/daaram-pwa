@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { exportBackup, triggerBackupDownload, wipeAllData } from "@/lib/infra/backup";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const APP_VERSION = "1.0.0";
@@ -52,54 +53,57 @@ export default function SettingsPage() {
 
   return (
     <main>
-      <PageHeader title="설정" />
+      <PageHeader title="설정" tone="brand" />
 
-      <Link href="/settings/categories">
-        <Card accent="neutral" className="space-y-1">
-          <p className="font-bold">카테고리 관리</p>
-          <p className="text-sm text-gray-500">레시피 카테고리 · 재료 카테고리 · 포장 단위</p>
+      <div className="space-y-3">
+        <SectionTitle tone="brand">카테고리 관리</SectionTitle>
+        <Link href="/settings/categories" className="block">
+          <Card accent="brand" className="flex items-center justify-between gap-3">
+            <span className="font-semibold text-gray-900">카테고리 관리</span>
+            <span aria-hidden="true" className="text-lg text-brand">
+              ›
+            </span>
+          </Card>
+        </Link>
+      </div>
+
+      <div className="space-y-3">
+        <SectionTitle tone="data">데이터 관리</SectionTitle>
+        <Button type="button" tone="data" variant="solid" fullWidth onClick={handleBackupNow}>
+          백업하기
+        </Button>
+        <Link
+          href="/backup"
+          className="flex w-full items-center justify-center rounded-full border border-data bg-white px-4 py-2 text-sm font-semibold text-data hover:bg-data-soft"
+        >
+          백업에서 복원
+        </Link>
+      </div>
+
+      <div className="space-y-3">
+        <SectionTitle tone="ingredient">단위 설정</SectionTitle>
+        <Card accent="ingredient" className="space-y-1">
+          <p className="font-bold text-gray-900">기본 단위: g</p>
+          <p className="text-sm text-gray-500">현재는 그램(g)만 지원해요. 추후 확장 예정.</p>
         </Card>
-      </Link>
+      </div>
 
-      <section>
-        <h2>데이터 관리</h2>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleBackupNow}
-            className="border-data bg-data text-white hover:bg-data"
-          >
-            백업하기
-          </button>
-          <Link
-            href="/backup"
-            className="inline-block rounded border border-data px-3 py-1 text-data hover:bg-data-soft"
-          >
-            백업에서 복원
-          </Link>
-        </div>
-      </section>
-
-      <section>
-        <h2>단위 설정</h2>
-        <p className="text-sm text-gray-500">기본 단위: g — 현재는 그램만 지원</p>
-      </section>
-
-      <section>
-        <h2>데이터 초기화</h2>
-        <button type="button" onClick={handleRequestWipe} className="text-danger">
+      <div className="space-y-3">
+        <SectionTitle tone="danger">데이터 초기화</SectionTitle>
+        <Button type="button" tone="danger" variant="soft" fullWidth onClick={handleRequestWipe}>
           모든 데이터 삭제
-        </button>
+        </Button>
         {wipeMessage && <p className="text-sm text-gray-500">{wipeMessage}</p>}
-      </section>
+      </div>
 
       <footer className="flex flex-col items-center gap-2 pt-6 text-center">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/brand/indigo-gelato-mascot.jpg"
           alt="Indigo Gelato"
           width={64}
           height={64}
-          className="rounded-full object-cover"
+          className="h-16 w-16 rounded-full object-cover"
         />
         <p className="text-sm text-gray-500">앱 버전 {APP_VERSION}</p>
       </footer>

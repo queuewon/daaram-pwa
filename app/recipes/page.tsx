@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { filterRecipes } from "@/lib/domain/recipeFilter";
@@ -30,13 +29,11 @@ function ingredientCountOf(
 export default function RecipesPage() {
   const recipes = useRecipeStore((s) => s.recipes);
   const loadRecipes = useRecipeStore((s) => s.loadRecipes);
-  const removeRecipe = useRecipeStore((s) => s.removeRecipe);
   const allVersions = useRecipeStore((s) => s.allVersions);
   const loadAllVersions = useRecipeStore((s) => s.loadAllVersions);
   const recipeCategories = useRecipeCategoryStore((s) => s.items);
   const loadRecipeCategories = useRecipeCategoryStore((s) => s.loadItems);
 
-  const [pendingDelete, setPendingDelete] = useState<Recipe | null>(null);
   const [searchText, setSearchText] = useState("");
   const [categoryId, setCategoryId] = useState<RecipeCategoryId | null>(null);
 
@@ -60,26 +57,33 @@ export default function RecipesPage() {
     <main>
       <PageHeader
         title="레시피"
-        subtitle={`총 ${recipes.length}개`}
+        subtitle="등록된 젤라또를 한눈에"
+        tone="brand"
         actions={
           <Link
             href="/recipes/new"
             aria-label="새 레시피"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-brand text-lg leading-none text-brand hover:bg-brand-soft"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-2xl leading-none text-white shadow-sm hover:opacity-90"
           >
             +
           </Link>
         }
       />
 
-      <SearchBar value={searchText} onChange={setSearchText} placeholder="레시피 이름 검색" />
+      <SearchBar value={searchText} onChange={setSearchText} placeholder="레시피 검색" />
 
-      <div className="flex gap-2 overflow-x-auto">
-        <FilterChip label="전체" active={categoryId === null} onClick={() => setCategoryId(null)} />
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <FilterChip
+          label="전체"
+          tone="brand"
+          active={categoryId === null}
+          onClick={() => setCategoryId(null)}
+        />
         {recipeCategories.map((category) => (
           <FilterChip
             key={category.id}
             label={category.name}
+            tone="brand"
             active={categoryId === category.id}
             onClick={() => setCategoryId(category.id)}
           />
@@ -102,39 +106,20 @@ export default function RecipesPage() {
             const ingredientCount = ingredientCountOf(recipe, latestVersionMap);
             return (
               <li key={recipe.id}>
-                <Card accent="brand" className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Link href={`/recipes/${recipe.id}`} className="font-bold underline">
-                      {recipe.name}
-                    </Link>
+                <Link href={`/recipes/${recipe.id}`} className="block">
+                  <Card accent="brand" className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-gray-900">{recipe.name}</p>
+                      <p className="mt-1 text-sm text-gray-500">재료 {ingredientCount}개</p>
+                    </div>
                     {category && <Badge label={category.name} colorHex={category.colorHex} />}
-                  </div>
-                  <p className="text-sm text-gray-500">재료 {ingredientCount}개</p>
-                  <div className="flex items-center justify-between gap-2 text-sm text-gray-500">
-                    <span>{recipe.batchSize.toLocaleString()}g</span>
-                    <button type="button" onClick={() => setPendingDelete(recipe)}>
-                      삭제
-                    </button>
-                  </div>
-                </Card>
+                  </Card>
+                </Link>
               </li>
             );
           })}
         </ul>
       )}
-
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title="레시피 삭제"
-        description={`"${pendingDelete?.name ?? ""}" 레시피를 삭제하시겠습니까? 되돌릴 수 없습니다.`}
-        confirmLabel="삭제"
-        destructive
-        onConfirm={() => {
-          if (pendingDelete) removeRecipe(pendingDelete.id);
-          setPendingDelete(null);
-        }}
-        onCancel={() => setPendingDelete(null)}
-      />
     </main>
   );
 }

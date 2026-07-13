@@ -18,7 +18,7 @@ export function SearchBar({ value, onChange, placeholder }: SearchBarProps) {
       onChange={handleChange}
       placeholder={placeholder}
       aria-label={placeholder ?? "검색"}
-      className="w-full rounded-full border border-gray-300 px-4 py-2"
+      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none placeholder:text-gray-400 focus:border-gray-300"
     />
   );
 }

@@ -1,5 +1,5 @@
 // CACHE_VERSION을 배포마다 올려서 구버전 캐시를 강제 무효화한다 (F7: 구버전 앱 갇힘 방지)
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const CACHE_NAME = `app-shell-${CACHE_VERSION}`;
 const APP_SHELL_URLS = ["/", "/manifest.json", "/icons/icon.svg"];
 

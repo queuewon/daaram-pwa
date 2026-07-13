@@ -7,6 +7,8 @@ import { calculateChecklistProgress } from "@/lib/domain/checklistProgress";
 import { formatDateWithWeekday, todayDateString } from "@/lib/domain/date";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import AddChecklistItemModal from "./AddChecklistItemModal";
@@ -51,56 +53,77 @@ export default function ChecklistPage() {
 
   return (
     <main>
-      <PageHeader
-        title="오늘 생산"
-        subtitle={formatDateWithWeekday(date)}
-        actions={
-          <button
-            type="button"
-            aria-label="메뉴 추가"
-            onClick={() => setAddModalOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-data text-lg leading-none text-data hover:bg-data-soft"
-          >
-            +
-          </button>
-        }
-      />
+      <PageHeader title="오늘 생산할 메뉴" subtitle={formatDateWithWeekday(date)} tone="data" />
 
-      <Card accent="data" className="space-y-2">
-        <p className="font-semibold">
-          {progress.doneCount.toLocaleString()} / {progress.total.toLocaleString()} 완료
-        </p>
+      <Card accent="data" className="space-y-3">
+        <SectionTitle
+          tone="data"
+          action={
+            <span className="text-sm font-medium text-gray-500">
+              {progress.doneCount.toLocaleString()} / {progress.total.toLocaleString()} 완료
+            </span>
+          }
+        >
+          진행률
+        </SectionTitle>
         <div className="h-2 rounded-full bg-gray-100">
-          <div className="h-2 rounded-full bg-data" style={{ width: `${progress.ratio * 100}%` }} />
+          <div
+            className="h-2 rounded-full bg-data transition-all"
+            style={{ width: `${progress.ratio * 100}%` }}
+          />
         </div>
       </Card>
 
       {items.length === 0 ? (
-        <EmptyState title="비어있네. 일해" subtitle="오늘 만들 메뉴를 추가해보도록" />
+        <EmptyState title="비어있네. 일해" subtitle="오늘 만들 메뉴를 추가해보도록" graphic />
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
             <li key={item.id}>
-              <Card accent="data" className="flex items-center justify-between gap-2">
-                <span>
+              <Card accent="data" className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate text-gray-800">
                   {recipeMap.get(item.recipeId)?.name ?? item.recipeId} ·{" "}
                   {item.batchSize.toLocaleString()}g
                 </span>
-                <button
-                  type="button"
-                  onClick={() => cycleStatus(item.id)}
-                  className={`rounded-full bg-gray-100 px-3 py-1 text-sm font-medium ${STATUS_TEXT_CLASS[item.status]}`}
-                >
-                  {STATUS_LABEL[item.status]}
-                </button>
-                <button type="button" onClick={() => setPendingDelete(item)}>
-                  삭제
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => cycleStatus(item.id)}
+                    className={`rounded-full border-transparent bg-gray-100 px-3 py-1 text-sm font-medium ${STATUS_TEXT_CLASS[item.status]}`}
+                  >
+                    {STATUS_LABEL[item.status]}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(item)}
+                    className="border-none px-1 text-sm text-gray-400 hover:bg-transparent hover:text-danger"
+                  >
+                    삭제
+                  </button>
+                </div>
               </Card>
             </li>
           ))}
         </ul>
       )}
+
+      <div aria-hidden="true" className="h-16" />
+      <div
+        className="fixed inset-x-0 z-30 border-t border-gray-100 bg-white"
+        style={{ bottom: "calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <div className="mx-auto max-w-2xl p-4">
+          <Button
+            type="button"
+            tone="data"
+            variant="solid"
+            fullWidth
+            onClick={() => setAddModalOpen(true)}
+          >
+            + 메뉴 추가
+          </Button>
+        </div>
+      </div>
 
       {addModalOpen && (
         <AddChecklistItemModal
