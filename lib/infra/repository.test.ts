@@ -18,7 +18,7 @@ function makeRecipe(id: string): Recipe {
   return {
     id: id as RecipeId,
     name: `레시피 ${id}`,
-    categoryId: null,
+    categoryIds: [],
     batchSize: pos(1000),
     memo: "",
     createdAt: "2026-07-11T00:00:00.000Z",

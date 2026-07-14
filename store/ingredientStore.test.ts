@@ -22,6 +22,7 @@ function validForm(overrides: Partial<Record<string, unknown>> = {}) {
     packageAmount: 500,
     stockCount: 10,
     stockUnit: "개",
+    unitWeightGram: 1,
     ...overrides,
   };
 }
@@ -40,6 +41,17 @@ describe("ingredientStore.saveIngredient — 생성", () => {
     expect(useIngredientStore.getState().ingredients).toHaveLength(1);
     expect(useIngredientStore.getState().priceHistory).toHaveLength(1);
     expect(useIngredientStore.getState().priceHistory[0].packagePrice).toBe(1000);
+  });
+
+  it("unitWeightGram을 저장한다", async () => {
+    const result = await useIngredientStore.getState().saveIngredient({
+      ingredientId: null,
+      form: validForm({ stockUnit: "봉", unitWeightGram: 1000 }),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.unitWeightGram).toBe(1000);
   });
 
   it("잘못된 폼 입력이면 InvalidForm 오류를 반환하고 아무것도 저장하지 않는다", async () => {
@@ -105,31 +117,31 @@ describe("ingredientStore.saveIngredient — 수정", () => {
   });
 });
 
-describe("ingredientStore.saveIngredient — categoryId", () => {
-  it("생성 시 폼의 categoryId를 반영한다", async () => {
+describe("ingredientStore.saveIngredient — categoryIds", () => {
+  it("생성 시 폼의 categoryIds를 반영한다", async () => {
     const result = await useIngredientStore.getState().saveIngredient({
       ingredientId: null,
-      form: validForm({ categoryId: "category-1" as IngredientCategoryId }),
+      form: validForm({ categoryIds: ["category-1", "category-2"] as IngredientCategoryId[] }),
     });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.categoryId).toBe("category-1");
+    if (result.ok) expect(result.value.categoryIds).toEqual(["category-1", "category-2"]);
   });
 
-  it("수정 시 폼의 categoryId로 교체한다", async () => {
+  it("수정 시 폼의 categoryIds로 교체한다", async () => {
     const created = await useIngredientStore.getState().saveIngredient({
       ingredientId: null,
-      form: validForm({ categoryId: "category-1" as IngredientCategoryId }),
+      form: validForm({ categoryIds: ["category-1"] as IngredientCategoryId[] }),
     });
     if (!created.ok) throw new Error("test setup");
 
     const updated = await useIngredientStore.getState().saveIngredient({
       ingredientId: created.value.id,
-      form: validForm({ categoryId: "category-2" as IngredientCategoryId }),
+      form: validForm({ categoryIds: ["category-2"] as IngredientCategoryId[] }),
     });
 
     expect(updated.ok).toBe(true);
-    if (updated.ok) expect(updated.value.categoryId).toBe("category-2");
+    if (updated.ok) expect(updated.value.categoryIds).toEqual(["category-2"]);
   });
 });
 

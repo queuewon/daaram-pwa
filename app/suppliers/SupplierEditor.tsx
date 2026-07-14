@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useSupplierStore } from "@/store/supplierStore";
 import type { SupplierId } from "@/lib/domain/ids";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface SupplierEditorProps {
   supplierId: SupplierId | null;
@@ -56,12 +58,14 @@ function SupplierEditorForm({
 }: SupplierEditorFormProps) {
   const router = useRouter();
   const saveSupplier = useSupplierStore((s) => s.saveSupplier);
+  const removeSupplier = useSupplierStore((s) => s.removeSupplier);
 
   const [name, setName] = useState(initialName);
   const [contact, setContact] = useState(initialContact);
   const [memo, setMemo] = useState(initialMemo);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
 
   async function handleSave() {
     setErrorMessage(null);
@@ -81,57 +85,103 @@ function SupplierEditorForm({
       return;
     }
 
-    router.push(`/suppliers/${result.value.id}`);
+    router.push("/suppliers");
   }
+
+  async function handleDelete() {
+    if (!supplierId) return;
+    await removeSupplier(supplierId);
+    setPendingDelete(false);
+    router.push("/suppliers");
+  }
+
+  const fieldClass = "w-full border-amber-200 focus-visible:border-ingredient";
+  const labelClass = "text-ingredient";
 
   return (
     <main>
-      <PageHeader title={supplierId ? "공급업체 수정" : "새 공급업체"} />
+      <PageHeader title={supplierId ? "공급업체 수정" : "새 공급업체"} tone="ingredient" back />
 
-      <div>
-        <label htmlFor="supplier-name">이름</label>
+      <div className="space-y-1.5">
+        <label htmlFor="supplier-name" className={labelClass}>
+          업체명
+        </label>
         <input
           id="supplier-name"
-          className="w-full"
+          className={fieldClass}
+          placeholder="예: 한국유제품"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
 
-      <div>
-        <label htmlFor="supplier-contact">연락처</label>
+      <div className="space-y-1.5">
+        <label htmlFor="supplier-contact" className={labelClass}>
+          연락처 (선택)
+        </label>
         <input
           id="supplier-contact"
-          className="w-full"
+          className={fieldClass}
+          placeholder="010-0000-0000"
           value={contact}
           onChange={(e) => setContact(e.target.value)}
         />
       </div>
 
-      <div>
-        <label htmlFor="supplier-memo">메모</label>
+      <div className="space-y-1.5">
+        <label htmlFor="supplier-memo" className={labelClass}>
+          메모 (선택)
+        </label>
         <textarea
           id="supplier-memo"
-          className="w-full"
+          className={`${fieldClass} min-h-24`}
+          placeholder="메모"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
         />
       </div>
 
       {errorMessage && (
-        <p role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-red-700">
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger"
+        >
           {errorMessage}
         </p>
       )}
 
-      <button
+      <Button
         type="button"
+        tone="ingredient"
+        variant="solid"
+        fullWidth
         onClick={handleSave}
         disabled={isSaving}
-        className="border-gray-900 font-medium"
       >
         저장
-      </button>
+      </Button>
+
+      {supplierId && (
+        <Button
+          type="button"
+          tone="danger"
+          variant="soft"
+          fullWidth
+          onClick={() => setPendingDelete(true)}
+        >
+          공급업체 삭제
+        </Button>
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete}
+        title="공급업체 삭제"
+        description={`"${name}" 공급업체를 삭제하시겠습니까? 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(false)}
+      />
     </main>
   );
 }

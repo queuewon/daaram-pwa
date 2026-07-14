@@ -59,12 +59,13 @@ export const useIngredientStore = create<IngredientStoreState>((set) => ({
       const createdResult = createIngredient({
         id: generateId<"IngredientId">(),
         name: parsed.data.name,
-        categoryId: parsed.data.categoryId,
+        categoryIds: parsed.data.categoryIds,
         supplierId: parsed.data.supplierId,
         packagePrice: parsed.data.packagePrice,
         packageAmount: parsed.data.packageAmount,
         stockCount: parsed.data.stockCount,
         stockUnit: parsed.data.stockUnit,
+        unitWeightGram: parsed.data.unitWeightGram,
       });
       if (!createdResult.ok) {
         return err({ type: "OutOfRange", value: createdResult.error.value });
@@ -106,13 +107,14 @@ export const useIngredientStore = create<IngredientStoreState>((set) => ({
     const updatedIngredient: Ingredient = {
       ...existing,
       name: parsed.data.name,
-      categoryId: parsed.data.categoryId,
+      categoryIds: parsed.data.categoryIds,
       supplierId: parsed.data.supplierId,
       packagePrice: parsed.data.packagePrice,
       packageAmount: parsed.data.packageAmount,
       pricePerGram: pricePerGramResult.value,
       stockCount: parsed.data.stockCount,
       stockUnit: parsed.data.stockUnit,
+      unitWeightGram: parsed.data.unitWeightGram,
     };
     const updateResult = await ingredientRepository.update(updatedIngredient);
     if (!updateResult.ok) {

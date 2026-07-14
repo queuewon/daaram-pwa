@@ -29,6 +29,24 @@ const colorHexSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 // pricePerGram 불변식 비교 시 부동소수점 오차 허용폭
 const PRICE_PER_GRAM_EPSILON = 1e-6;
 
+const recipeCategoryIdSchema = z
+  .string()
+  .min(1)
+  .transform((v) => v as RecipeCategoryId);
+const ingredientCategoryIdSchema = z
+  .string()
+  .min(1)
+  .transform((v) => v as IngredientCategoryId);
+
+/** 레거시 {categoryId} 레코드/백업을 {categoryIds} 배열로 정규화한다(비파괴 하위호환). */
+function normalizeCategoryIds(raw: unknown): unknown {
+  if (raw !== null && typeof raw === "object" && !("categoryIds" in raw) && "categoryId" in raw) {
+    const { categoryId, ...rest } = raw as Record<string, unknown>;
+    return { ...rest, categoryIds: categoryId == null ? [] : [categoryId] };
+  }
+  return raw;
+}
+
 // RecipeCategory / IngredientCategory / PackageUnit은 형태가 동일한 사용자 정의 라벨이라 팩토리로 중복 제거.
 function labelSchema<B extends string>() {
   return z.object({
@@ -55,36 +73,37 @@ export const supplierSchema = z.object({
   memo: z.string(),
 });
 
-export const ingredientSchema = z
-  .object({
-    id: z
-      .string()
-      .min(1)
-      .transform((v) => v as IngredientId),
-    name: z.string().min(1),
-    categoryId: z
-      .string()
-      .min(1)
-      .transform((v) => v as IngredientCategoryId)
-      .nullable(),
-    supplierId: z
-      .string()
-      .min(1)
-      .transform((v) => v as SupplierId)
-      .nullable(),
-    packagePrice: nonNegativeNumberSchema,
-    packageAmount: positiveNumberSchema,
-    pricePerGram: nonNegativeNumberSchema,
-    stockCount: nonNegativeNumberSchema,
-    stockUnit: z.string().min(1),
-  })
-  .refine(
-    (v) => Math.abs(v.pricePerGram - v.packagePrice / v.packageAmount) < PRICE_PER_GRAM_EPSILON,
-    {
-      message: "pricePerGram은 packagePrice / packageAmount와 일치해야 합니다",
-      path: ["pricePerGram"],
-    },
-  );
+export const ingredientSchema = z.preprocess(
+  normalizeCategoryIds,
+  z
+    .object({
+      id: z
+        .string()
+        .min(1)
+        .transform((v) => v as IngredientId),
+      name: z.string().min(1),
+      categoryIds: z.array(ingredientCategoryIdSchema),
+      supplierId: z
+        .string()
+        .min(1)
+        .transform((v) => v as SupplierId)
+        .nullable(),
+      packagePrice: nonNegativeNumberSchema,
+      packageAmount: positiveNumberSchema,
+      pricePerGram: nonNegativeNumberSchema,
+      stockCount: nonNegativeNumberSchema,
+      stockUnit: z.string().min(1),
+      // 레거시 레코드/옛 백업(필드 없음)은 1로 파싱(비파괴). 값이 있으면 >0 검증.
+      unitWeightGram: positiveNumberSchema.default(1 as PositiveNumber),
+    })
+    .refine(
+      (v) => Math.abs(v.pricePerGram - v.packagePrice / v.packageAmount) < PRICE_PER_GRAM_EPSILON,
+      {
+        message: "pricePerGram은 packagePrice / packageAmount와 일치해야 합니다",
+        path: ["pricePerGram"],
+      },
+    ),
+);
 
 export const ingredientPriceHistorySchema = z.object({
   id: z
@@ -100,22 +119,21 @@ export const ingredientPriceHistorySchema = z.object({
   recordedAt: z.string().min(1),
 });
 
-export const recipeSchema = z.object({
-  id: z
-    .string()
-    .min(1)
-    .transform((v) => v as RecipeId),
-  name: z.string().min(1),
-  categoryId: z
-    .string()
-    .min(1)
-    .transform((v) => v as RecipeCategoryId)
-    .nullable(),
-  batchSize: positiveNumberSchema,
-  memo: z.string(),
-  createdAt: z.string().min(1),
-  updatedAt: z.string().min(1),
-});
+export const recipeSchema = z.preprocess(
+  normalizeCategoryIds,
+  z.object({
+    id: z
+      .string()
+      .min(1)
+      .transform((v) => v as RecipeId),
+    name: z.string().min(1),
+    categoryIds: z.array(recipeCategoryIdSchema),
+    batchSize: positiveNumberSchema,
+    memo: z.string(),
+    createdAt: z.string().min(1),
+    updatedAt: z.string().min(1),
+  }),
+);
 
 export const recipeVersionSchema = z.object({
   id: z
@@ -151,12 +169,13 @@ export const dailyChecklistSchema = z.object({
 export interface CreateIngredientInput {
   id: IngredientId;
   name: string;
-  categoryId: IngredientCategoryId | null;
+  categoryIds: IngredientCategoryId[];
   supplierId: SupplierId | null;
   packagePrice: NonNegativeNumber;
   packageAmount: PositiveNumber;
   stockCount: NonNegativeNumber;
   stockUnit: string;
+  unitWeightGram: PositiveNumber;
 }
 
 export function createIngredient(

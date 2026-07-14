@@ -9,6 +9,20 @@ export function computePricePerGram(
   return parseNonNegativeNumber(packagePrice / packageAmount);
 }
 
+/** 재고 수량을 그램으로 환산: 재고 × 1세는단위당 중량. */
+export function stockGrams(stockCount: NonNegativeNumber, unitWeightGram: PositiveNumber): number {
+  return stockCount * unitWeightGram;
+}
+
+/** 재고 가치(원) = 재고 그램 × 원/g, 원 단위 반올림. */
+export function stockValueKrw(
+  stockCount: NonNegativeNumber,
+  unitWeightGram: PositiveNumber,
+  pricePerGram: NonNegativeNumber,
+): number {
+  return Math.round(stockGrams(stockCount, unitWeightGram) * pricePerGram);
+}
+
 export interface PackagePricePoint {
   packagePrice: number;
   packageAmount: number;

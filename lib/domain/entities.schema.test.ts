@@ -5,6 +5,7 @@ import {
   ingredientSchema,
   packageUnitSchema,
   recipeCategorySchema,
+  recipeSchema,
 } from "./entities.schema";
 import { parseNonNegativeNumber, parsePositiveNumber } from "./numbers";
 
@@ -59,12 +60,13 @@ describe("createIngredient", () => {
     const result = createIngredient({
       id: "ing-1" as never,
       name: "우유",
-      categoryId: null,
+      categoryIds: [],
       supplierId: null,
       packagePrice: nn(1000),
       packageAmount: pos(500),
       stockCount: nn(0),
       stockUnit: "개",
+      unitWeightGram: pos(1),
     });
 
     expect(result.ok).toBe(true);
@@ -116,5 +118,88 @@ describe("ingredientSchema", () => {
       stockUnit: "개",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("unitWeightGram이 없는 레거시 레코드는 1로 채워 파싱한다", () => {
+    const result = ingredientSchema.safeParse({
+      id: "ing-1",
+      name: "우유",
+      categoryId: null,
+      supplierId: null,
+      packagePrice: 1000,
+      packageAmount: 500,
+      pricePerGram: 2,
+      stockCount: 0,
+      stockUnit: "봉",
+      // unitWeightGram 없음 (구버전)
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.unitWeightGram).toBe(1);
+  });
+
+  it("unitWeightGram이 0이면 거부한다", () => {
+    const result = ingredientSchema.safeParse({
+      id: "ing-1",
+      name: "우유",
+      categoryId: null,
+      supplierId: null,
+      packagePrice: 1000,
+      packageAmount: 500,
+      pricePerGram: 2,
+      stockCount: 0,
+      stockUnit: "봉",
+      unitWeightGram: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("레거시 categoryId(값)은 categoryIds=[id]로 정규화한다", () => {
+    const result = ingredientSchema.safeParse({
+      id: "ing-1",
+      name: "우유",
+      categoryId: "icat-1",
+      supplierId: null,
+      packagePrice: 1000,
+      packageAmount: 500,
+      pricePerGram: 2,
+      stockCount: 0,
+      stockUnit: "g",
+      unitWeightGram: 1,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.categoryIds).toEqual(["icat-1"]);
+  });
+
+  it("레거시 categoryId=null은 categoryIds=[]로 정규화한다", () => {
+    const result = ingredientSchema.safeParse({
+      id: "ing-1",
+      name: "우유",
+      categoryId: null,
+      supplierId: null,
+      packagePrice: 1000,
+      packageAmount: 500,
+      pricePerGram: 2,
+      stockCount: 0,
+      stockUnit: "g",
+      unitWeightGram: 1,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.categoryIds).toEqual([]);
+  });
+});
+
+describe("recipeSchema — 레거시 categoryId 정규화", () => {
+  it("categoryId(값)은 categoryIds=[id]로 정규화한다", () => {
+    const result = recipeSchema.safeParse({
+      id: "r-1",
+      name: "딸기 젤라또",
+      categoryId: "cat-1",
+      batchSize: 1000,
+      memo: "",
+      createdAt: "2026-07-01T00:00:00.000Z",
+      updatedAt: "2026-07-01T00:00:00.000Z",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.categoryIds).toEqual(["cat-1"]);
   });
 });

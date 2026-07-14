@@ -66,7 +66,7 @@ export const useRecipeStore = create<RecipeStoreState>((set) => ({
       const recipe: Recipe = {
         id: generateId<"RecipeId">(),
         name: parsed.data.name,
-        categoryId: parsed.data.categoryId,
+        categoryIds: parsed.data.categoryIds,
         batchSize: parsed.data.batchSize,
         memo: parsed.data.memo,
         createdAt: now,
@@ -96,7 +96,7 @@ export const useRecipeStore = create<RecipeStoreState>((set) => ({
     const updatedRecipe: Recipe = {
       ...existingResult.value,
       name: parsed.data.name,
-      categoryId: parsed.data.categoryId,
+      categoryIds: parsed.data.categoryIds,
       batchSize: parsed.data.batchSize,
       memo: parsed.data.memo,
       updatedAt: now,

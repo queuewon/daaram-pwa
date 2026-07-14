@@ -31,12 +31,13 @@ export default function PriceEntryModal({ ingredient, onClose }: PriceEntryModal
       ingredientId: ingredient.id,
       form: {
         name: ingredient.name,
-        categoryId: ingredient.categoryId,
+        categoryIds: ingredient.categoryIds,
         supplierId: ingredient.supplierId,
         packagePrice,
         packageAmount: ingredient.packageAmount,
         stockCount: ingredient.stockCount,
         stockUnit: ingredient.stockUnit,
+        unitWeightGram: ingredient.unitWeightGram,
       },
     });
     setIsSaving(false);

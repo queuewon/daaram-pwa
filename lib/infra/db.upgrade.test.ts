@@ -75,7 +75,7 @@ describe("GelatoDB v1→v2 마이그레이션", () => {
 
     const db = new GelatoDB(dbName);
     await db.open();
-    expect(db.verno).toBe(2);
+    expect(db.verno).toBe(3);
 
     const ingredient = await db.ingredients.get("ing1" as never);
     expect(ingredient).toMatchObject({
@@ -84,9 +84,11 @@ describe("GelatoDB v1→v2 마이그레이션", () => {
       pricePerGram: 3,
       stockCount: 0,
       stockUnit: "g",
+      categoryIds: [],
     });
     expect(ingredient).not.toHaveProperty("currentPriceKrwPerGram");
     expect(ingredient).not.toHaveProperty("packageUnitId");
+    expect(ingredient).not.toHaveProperty("categoryId");
     db.close();
   });
 
@@ -137,6 +139,40 @@ describe("GelatoDB v1→v2 마이그레이션", () => {
     await db.open();
 
     expect(await db.daily_checklist.count()).toBe(0);
+    db.close();
+  });
+
+  it("v3: 값이 있는 categoryId는 categoryIds=[id]로 변환한다 [F6]", async () => {
+    dbName = "migrate-category-multi";
+    const legacy = new Dexie(dbName);
+    legacy.version(1).stores(V1_STORES);
+    await legacy.open();
+    await legacy.table("recipes").add({
+      id: "r9",
+      name: "딸기",
+      categoryId: "cat1",
+      createdAt: "2026-07-01T00:00:00.000Z",
+      updatedAt: "2026-07-01T00:00:00.000Z",
+    });
+    await legacy.table("ingredients").add({
+      id: "ing9",
+      name: "딸기 퓨레",
+      categoryId: "icat1",
+      supplierId: null,
+      packageUnitId: null,
+      currentPriceKrwPerGram: 5,
+    });
+    legacy.close();
+
+    const db = new GelatoDB(dbName);
+    await db.open();
+
+    const recipe = await db.recipes.get("r9" as never);
+    expect(recipe?.categoryIds).toEqual(["cat1"]);
+    expect(recipe).not.toHaveProperty("categoryId");
+    const ingredient = await db.ingredients.get("ing9" as never);
+    expect(ingredient?.categoryIds).toEqual(["icat1"]);
+    expect(ingredient).not.toHaveProperty("categoryId");
     db.close();
   });
 });

@@ -6,6 +6,7 @@ import {
   ingredientPriceHistoryRepository,
   ingredientRepository,
   listChecklistItemsByDate,
+  listChecklistItemsInRange,
   listIngredientPriceHistoryByIngredientId,
   listRecipeVersionsByRecipeId,
   packageUnitRepository,
@@ -306,6 +307,29 @@ describe("listChecklistItemsByDate", () => {
 
   it("해당 날짜에 항목이 없으면 빈 배열을 반환한다", async () => {
     const result = await listChecklistItemsByDate("2026-01-01");
+
+    expect(result).toEqual({ ok: true, value: [] });
+  });
+});
+
+describe("listChecklistItemsInRange", () => {
+  it("범위 양끝을 포함하고 범위 밖은 제외한다", async () => {
+    await checklistRepository.create(checklistItem("r-0", "2026-06-30"));
+    await checklistRepository.create(checklistItem("r-1", "2026-07-01"));
+    await checklistRepository.create(checklistItem("r-2", "2026-07-15"));
+    await checklistRepository.create(checklistItem("r-3", "2026-07-31"));
+    await checklistRepository.create(checklistItem("r-4", "2026-08-01"));
+
+    const result = await listChecklistItemsInRange("2026-07-01", "2026-07-31");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.map((item) => item.id).sort()).toEqual(["r-1", "r-2", "r-3"]);
+    }
+  });
+
+  it("범위에 항목이 없으면 빈 배열을 반환한다", async () => {
+    const result = await listChecklistItemsInRange("2020-01-01", "2020-01-31");
 
     expect(result).toEqual({ ok: true, value: [] });
   });

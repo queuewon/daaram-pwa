@@ -115,3 +115,19 @@ export async function listChecklistItemsByDate(
 
   return ok(items);
 }
+
+/** [start, end] 양끝 포함 날짜 범위의 체크리스트 항목. date 인덱스 범위 조회. */
+export async function listChecklistItemsInRange(
+  start: string,
+  end: string,
+): Promise<Result<DailyChecklist[], never>> {
+  const rows = await db.daily_checklist.where("date").between(start, end, true, true).toArray();
+  const items: DailyChecklist[] = [];
+
+  for (const row of rows) {
+    const parsed = dailyChecklistSchema.safeParse(row);
+    if (parsed.success) items.push(parsed.data);
+  }
+
+  return ok(items);
+}

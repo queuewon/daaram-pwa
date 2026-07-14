@@ -5,12 +5,14 @@ import { useChecklistStore } from "@/store/checklistStore";
 import { useRecipeStore } from "@/store/recipeStore";
 import { calculateChecklistProgress } from "@/lib/domain/checklistProgress";
 import { formatDateWithWeekday, todayDateString } from "@/lib/domain/date";
+import { productionDates, yearMonthOf, type YearMonth } from "@/lib/domain/calendar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ProductionCalendar } from "./ProductionCalendar";
 import AddChecklistItemModal from "./AddChecklistItemModal";
 import type { DailyChecklist, DailyChecklistStatus } from "@/lib/domain/entities";
 
@@ -27,13 +29,17 @@ const STATUS_TEXT_CLASS: Record<DailyChecklistStatus, string> = {
 };
 
 export default function ChecklistPage() {
-  const date = todayDateString();
+  const today = todayDateString();
 
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [viewYM, setViewYM] = useState<YearMonth>(() => yearMonthOf(today));
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DailyChecklist | null>(null);
 
   const items = useChecklistStore((s) => s.items);
+  const monthItems = useChecklistStore((s) => s.monthItems);
   const loadByDate = useChecklistStore((s) => s.loadByDate);
+  const loadMonth = useChecklistStore((s) => s.loadMonth);
   const cycleStatus = useChecklistStore((s) => s.cycleStatus);
   const removeChecklistItem = useChecklistStore((s) => s.removeChecklistItem);
 
@@ -45,27 +51,61 @@ export default function ChecklistPage() {
   }, [loadRecipes]);
 
   useEffect(() => {
-    loadByDate(date);
-  }, [date, loadByDate]);
+    loadByDate(selectedDate);
+  }, [selectedDate, loadByDate]);
+
+  useEffect(() => {
+    loadMonth(viewYM);
+  }, [viewYM, loadMonth]);
 
   const recipeMap = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const progress = useMemo(() => calculateChecklistProgress(items), [items]);
+  const markedDates = useMemo(() => productionDates(monthItems), [monthItems]);
+
+  const isToday = selectedDate === today;
+
+  function goToday() {
+    setSelectedDate(today);
+    setViewYM(yearMonthOf(today));
+  }
 
   return (
     <main>
-      <PageHeader title="오늘 생산할 메뉴" subtitle={formatDateWithWeekday(date)} tone="data" />
+      <PageHeader title="생산 달력" subtitle="날짜별 생산 기록을 관리" tone="data" />
+
+      <ProductionCalendar
+        viewYM={viewYM}
+        selectedDate={selectedDate}
+        today={today}
+        markedDates={markedDates}
+        onSelectDate={setSelectedDate}
+        onChangeMonth={setViewYM}
+      />
+
+      <SectionTitle
+        tone="data"
+        action={
+          !isToday && (
+            <button
+              type="button"
+              onClick={goToday}
+              className="border-none px-0 text-sm font-semibold text-data hover:bg-transparent"
+            >
+              오늘로
+            </button>
+          )
+        }
+      >
+        {formatDateWithWeekday(selectedDate)}
+      </SectionTitle>
 
       <Card accent="data" className="space-y-3">
-        <SectionTitle
-          tone="data"
-          action={
-            <span className="text-sm font-medium text-gray-500">
-              {progress.doneCount.toLocaleString()} / {progress.total.toLocaleString()} 완료
-            </span>
-          }
-        >
-          진행률
-        </SectionTitle>
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-gray-900">진행률</span>
+          <span className="text-sm font-medium text-gray-500">
+            {progress.doneCount.toLocaleString()} / {progress.total.toLocaleString()} 완료
+          </span>
+        </div>
         <div className="h-2 rounded-full bg-gray-100">
           <div
             className="h-2 rounded-full bg-data transition-all"
@@ -75,15 +115,21 @@ export default function ChecklistPage() {
       </Card>
 
       {items.length === 0 ? (
-        <EmptyState title="비어있네. 일해" subtitle="오늘 만들 메뉴를 추가해보도록" graphic />
+        <EmptyState
+          title={isToday ? "비어있네. 일해" : "이 날은 생산 기록이 없어요"}
+          subtitle="아래 버튼으로 메뉴를 추가해보세요"
+          graphic
+        />
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
             <li key={item.id}>
               <Card accent="data" className="flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate text-gray-800">
-                  {recipeMap.get(item.recipeId)?.name ?? item.recipeId} ·{" "}
-                  {item.batchSize.toLocaleString()}g
+                <span className="min-w-0 truncate">
+                  <span className="font-medium text-gray-900">
+                    {recipeMap.get(item.recipeId)?.name ?? "삭제된 레시피"}
+                  </span>
+                  <span className="text-gray-400"> · {item.batchSize.toLocaleString()}g</span>
                 </span>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
@@ -128,8 +174,11 @@ export default function ChecklistPage() {
       {addModalOpen && (
         <AddChecklistItemModal
           recipes={recipes}
-          date={date}
-          onClose={() => setAddModalOpen(false)}
+          date={selectedDate}
+          onClose={() => {
+            setAddModalOpen(false);
+            loadMonth(viewYM);
+          }}
         />
       )}
 
@@ -137,15 +186,14 @@ export default function ChecklistPage() {
         open={pendingDelete !== null}
         title="생산 항목 삭제"
         description={`"${
-          pendingDelete
-            ? (recipeMap.get(pendingDelete.recipeId)?.name ?? pendingDelete.recipeId)
-            : ""
+          pendingDelete ? (recipeMap.get(pendingDelete.recipeId)?.name ?? "삭제된 레시피") : ""
         }" 항목을 삭제하시겠습니까? 되돌릴 수 없습니다.`}
         confirmLabel="삭제"
         destructive
         onConfirm={() => {
           if (pendingDelete) removeChecklistItem(pendingDelete.id);
           setPendingDelete(null);
+          loadMonth(viewYM);
         }}
         onCancel={() => setPendingDelete(null)}
       />

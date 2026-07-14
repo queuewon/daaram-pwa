@@ -13,15 +13,11 @@ function pos(n: number) {
 const categoryA = "category-a" as RecipeCategoryId;
 const categoryB = "category-b" as RecipeCategoryId;
 
-function recipe(params: {
-  id: string;
-  name: string;
-  categoryId?: RecipeCategoryId | null;
-}): Recipe {
+function recipe(params: { id: string; name: string; categoryIds?: RecipeCategoryId[] }): Recipe {
   return {
     id: params.id as RecipeId,
     name: params.name,
-    categoryId: params.categoryId ?? null,
+    categoryIds: params.categoryIds ?? [],
     batchSize: pos(1000),
     memo: "",
     createdAt: "2026-07-12T00:00:00.000Z",
@@ -29,9 +25,9 @@ function recipe(params: {
   };
 }
 
-const strawberry = recipe({ id: "r1", name: "딸기 젤라또", categoryId: categoryA });
-const mango = recipe({ id: "r2", name: "망고 소르베", categoryId: categoryB });
-const uncategorized = recipe({ id: "r3", name: "바닐라 젤라또", categoryId: null });
+const strawberry = recipe({ id: "r1", name: "딸기 젤라또", categoryIds: [categoryA] });
+const mango = recipe({ id: "r2", name: "망고 소르베", categoryIds: [categoryB] });
+const uncategorized = recipe({ id: "r3", name: "바닐라 젤라또", categoryIds: [] });
 
 const recipes = [strawberry, mango, uncategorized];
 
@@ -69,6 +65,13 @@ describe("filterRecipes", () => {
       mango,
     ]);
     expect(filterRecipes(recipes, { searchText: "소르베", categoryId: categoryA })).toEqual([]);
+  });
+
+  it("여러 카테고리를 가진 레시피는 각 카테고리 필터에 모두 매칭된다", () => {
+    const multi = recipe({ id: "r5", name: "믹스 젤라또", categoryIds: [categoryA, categoryB] });
+    const list = [multi];
+    expect(filterRecipes(list, { searchText: "", categoryId: categoryA })).toEqual([multi]);
+    expect(filterRecipes(list, { searchText: "", categoryId: categoryB })).toEqual([multi]);
   });
 
   it("조건에 맞는 레시피가 없으면 빈 배열을 반환한다", () => {

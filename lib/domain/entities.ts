@@ -39,13 +39,15 @@ export interface Supplier {
 export interface Ingredient {
   id: IngredientId;
   name: string;
-  categoryId: IngredientCategoryId | null;
+  categoryIds: IngredientCategoryId[];
   supplierId: SupplierId | null;
   packagePrice: NonNegativeNumber;
   packageAmount: PositiveNumber;
   pricePerGram: NonNegativeNumber;
   stockCount: NonNegativeNumber;
   stockUnit: string;
+  /** 1 stockUnit 당 그램(다리). 예: 1봉=1000. "g"이면 1. */
+  unitWeightGram: PositiveNumber;
 }
 
 export interface IngredientPriceHistory {
@@ -59,7 +61,7 @@ export interface IngredientPriceHistory {
 export interface Recipe {
   id: RecipeId;
   name: string;
-  categoryId: RecipeCategoryId | null;
+  categoryIds: RecipeCategoryId[];
   batchSize: PositiveNumber;
   memo: string;
   createdAt: string;
