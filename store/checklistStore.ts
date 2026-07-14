@@ -1,8 +1,13 @@
 import { create } from "zustand";
 import type { z } from "zod";
-import { checklistRepository, listChecklistItemsByDate } from "../lib/infra/repositories";
+import {
+  checklistRepository,
+  listChecklistItemsByDate,
+  listChecklistItemsInRange,
+} from "../lib/infra/repositories";
 import { checklistFormInputSchema } from "../lib/domain/checklistForm.schema";
 import { nextChecklistStatus } from "../lib/domain/checklistStatus";
+import { monthRange, type YearMonth } from "../lib/domain/calendar";
 import { generateId } from "../lib/domain/ids";
 import { err, ok, type Result } from "../lib/domain/result";
 import type { DailyChecklist } from "../lib/domain/entities";
@@ -13,7 +18,10 @@ export type CycleStatusError = { type: "NotFound"; id: string };
 
 interface ChecklistStoreState {
   items: DailyChecklist[];
+  /** 달력 점 표시용: 선택된 달 전체 항목. */
+  monthItems: DailyChecklist[];
   loadByDate: (date: string) => Promise<void>;
+  loadMonth: (ym: YearMonth) => Promise<void>;
   addChecklistItem: (form: unknown) => Promise<Result<DailyChecklist, AddChecklistItemError>>;
   cycleStatus: (id: DailyChecklistId) => Promise<Result<DailyChecklist, CycleStatusError>>;
   removeChecklistItem: (id: DailyChecklistId) => Promise<void>;
@@ -21,10 +29,17 @@ interface ChecklistStoreState {
 
 export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
   items: [],
+  monthItems: [],
 
   loadByDate: async (date) => {
     const result = await listChecklistItemsByDate(date);
     if (result.ok) set({ items: result.value });
+  },
+
+  loadMonth: async (ym) => {
+    const { start, end } = monthRange(ym);
+    const result = await listChecklistItemsInRange(start, end);
+    if (result.ok) set({ monthItems: result.value });
   },
 
   addChecklistItem: async (form) => {

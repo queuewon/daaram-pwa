@@ -5,7 +5,7 @@ import type { DailyChecklistId, RecipeId } from "../lib/domain/ids";
 
 beforeEach(async () => {
   await db.open();
-  useChecklistStore.setState({ items: [] });
+  useChecklistStore.setState({ items: [], monthItems: [] });
 });
 
 afterEach(async () => {
@@ -89,5 +89,22 @@ describe("checklistStore.loadByDate", () => {
     const items = useChecklistStore.getState().items;
     expect(items).toHaveLength(1);
     expect(items[0].date).toBe("2026-07-11");
+  });
+});
+
+describe("checklistStore.loadMonth", () => {
+  it("선택한 달 범위의 항목만 monthItems로 불러온다", async () => {
+    await useChecklistStore.getState().addChecklistItem(validForm({ date: "2026-06-30" }));
+    await useChecklistStore.getState().addChecklistItem(validForm({ date: "2026-07-01" }));
+    await useChecklistStore.getState().addChecklistItem(validForm({ date: "2026-07-31" }));
+    await useChecklistStore.getState().addChecklistItem(validForm({ date: "2026-08-01" }));
+
+    await useChecklistStore.getState().loadMonth({ year: 2026, month: 7 });
+
+    const dates = useChecklistStore
+      .getState()
+      .monthItems.map((i) => i.date)
+      .sort();
+    expect(dates).toEqual(["2026-07-01", "2026-07-31"]);
   });
 });
