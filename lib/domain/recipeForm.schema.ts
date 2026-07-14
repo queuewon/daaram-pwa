@@ -5,11 +5,14 @@ import type { NonNegativeNumber, PositiveNumber } from "./numbers";
 export const recipeFormInputSchema = z
   .object({
     name: z.string().min(1),
-    categoryId: z
-      .string()
-      .min(1)
-      .transform((v) => v as RecipeCategoryId)
-      .nullable(),
+    categoryIds: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .transform((v) => v as RecipeCategoryId),
+      )
+      .default([]),
     batchSize: z
       .number()
       .gt(0)

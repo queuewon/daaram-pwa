@@ -3,8 +3,36 @@ import {
   computePriceDeltas,
   computePricePerGram,
   hasPackagePriceChanged,
+  stockGrams,
+  stockValueKrw,
 } from "./ingredientPricing";
 import { parseNonNegativeNumber, parsePositiveNumber } from "./numbers";
+
+describe("stockGrams", () => {
+  it("재고 수량 × 단위당 중량 = 총 그램", () => {
+    expect(stockGrams(nn(5), pos(1000))).toBe(5000);
+  });
+
+  it("재고 0이면 0g", () => {
+    expect(stockGrams(nn(0), pos(1000))).toBe(0);
+  });
+});
+
+describe("stockValueKrw", () => {
+  it("재고 그램 × 원/g = 재고 가치(원)", () => {
+    expect(stockValueKrw(nn(5), pos(1000), nn(2))).toBe(10000);
+  });
+
+  it("소수 결과는 원 단위로 반올림한다", () => {
+    // 1 * 1 * 0.5 = 0.5 → 1 (반올림), 1 * 1 * 0.4 = 0.4 → 0
+    expect(stockValueKrw(nn(1), pos(1), nn(0.5))).toBe(1);
+    expect(stockValueKrw(nn(1), pos(1), nn(0.4))).toBe(0);
+  });
+
+  it("재고 0이면 0원", () => {
+    expect(stockValueKrw(nn(0), pos(1000), nn(2))).toBe(0);
+  });
+});
 
 function nn(n: number) {
   const result = parseNonNegativeNumber(n);

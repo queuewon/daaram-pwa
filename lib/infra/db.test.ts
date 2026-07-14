@@ -33,8 +33,8 @@ describe("GelatoDB", () => {
     await db.open();
   });
 
-  it("버전 2로 최초 오픈에 성공한다", () => {
-    expect(db.verno).toBe(2);
+  it("버전 3으로 최초 오픈에 성공한다", () => {
+    expect(db.verno).toBe(3);
   });
 
   it("recipe_categories에 추가하고 조회할 수 있다", async () => {
@@ -70,13 +70,14 @@ describe("GelatoDB", () => {
     await db.ingredients.add({
       id,
       name: "우유",
-      categoryId: null,
+      categoryIds: [],
       supplierId: null,
       packagePrice: nn(1000),
       packageAmount: pos(500),
       pricePerGram: nn(2),
       stockCount: nn(0),
       stockUnit: "개",
+      unitWeightGram: pos(1),
     });
     const found = await db.ingredients.get(id);
     expect(found?.pricePerGram).toBe(2);
@@ -100,7 +101,7 @@ describe("GelatoDB", () => {
     await db.recipes.add({
       id,
       name: "바닐라 젤라또",
-      categoryId: null,
+      categoryIds: [],
       batchSize: pos(1000),
       memo: "",
       createdAt: "2026-07-10T00:00:00.000Z",

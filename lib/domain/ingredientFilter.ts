@@ -16,7 +16,7 @@ export function filterIngredients(
     const matchesSearchText =
       normalizedSearchText === "" || ingredient.name.toLowerCase().includes(normalizedSearchText);
     const matchesCategory =
-      filter.categoryId === null || ingredient.categoryId === filter.categoryId;
+      filter.categoryId === null || ingredient.categoryIds.includes(filter.categoryId);
     return matchesSearchText && matchesCategory;
   });
 }

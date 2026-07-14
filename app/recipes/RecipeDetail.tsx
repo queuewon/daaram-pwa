@@ -11,6 +11,7 @@ import { BATCH_STEP_GRAM, scaleBatch, stepBatchSize } from "@/lib/domain/batch";
 import { parseRecipeSnapshot, type RecipeSnapshotLine } from "@/lib/domain/recipeSnapshot";
 import {
   parseNonNegativeNumber,
+  parsePositiveNumber,
   type NonNegativeNumber,
   type PositiveNumber,
 } from "@/lib/domain/numbers";
@@ -21,7 +22,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import VersionHistory from "./VersionHistory";
+import VersionList from "./VersionList";
 
 interface RecipeDetailProps {
   recipeId: RecipeId;
@@ -70,14 +71,14 @@ export default function RecipeDetail({ recipeId }: RecipeDetailProps) {
     );
   }
 
-  const category = recipe.categoryId
-    ? recipeCategories.find((c) => c.id === recipe.categoryId)
-    : undefined;
+  const categories = recipe.categoryIds
+    .map((id) => recipeCategories.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => c !== undefined);
 
   return (
     <RecipeDetailView
       recipe={recipe}
-      category={category}
+      categories={categories}
       lines={snapshotResult.value.lines}
       ingredients={ingredients}
       versions={versions}
@@ -87,7 +88,7 @@ export default function RecipeDetail({ recipeId }: RecipeDetailProps) {
 
 interface RecipeDetailViewProps {
   recipe: Recipe;
-  category?: { name: string; colorHex: string };
+  categories: { id: string; name: string; colorHex: string }[];
   lines: readonly RecipeSnapshotLine[];
   ingredients: Ingredient[];
   versions: RecipeVersion[];
@@ -95,16 +96,40 @@ interface RecipeDetailViewProps {
 
 function RecipeDetailView({
   recipe,
-  category,
+  categories,
   lines,
   ingredients,
   versions,
 }: RecipeDetailViewProps) {
   const router = useRouter();
   const removeRecipe = useRecipeStore((s) => s.removeRecipe);
+  const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  const loadVersions = useRecipeStore((s) => s.loadVersions);
 
   const [batchSize, setBatchSize] = useState<PositiveNumber>(recipe.batchSize);
+  const [batchInput, setBatchInput] = useState(recipe.batchSize.toLocaleString());
   const [pendingDelete, setPendingDelete] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<RecipeVersion | null>(null);
+
+  async function handleRestore(version: RecipeVersion) {
+    const parsed = parseRecipeSnapshot(version.snapshotJson);
+    if (!parsed.ok) return;
+    await saveRecipe({
+      recipeId: recipe.id,
+      form: {
+        name: recipe.name,
+        categoryIds: recipe.categoryIds,
+        batchSize: parsed.value.batchSize,
+        memo: recipe.memo,
+        lines: parsed.value.lines.map((l) => ({
+          ingredientId: l.ingredientId,
+          quantityGram: l.quantityGram,
+        })),
+      },
+    });
+    setPendingRestore(null);
+    loadVersions(recipe.id);
+  }
 
   const ingredientMap = useMemo(
     () => new Map<IngredientId, Ingredient>(ingredients.map((i) => [i.id, i])),
@@ -130,8 +155,24 @@ function RecipeDetailView({
     return calculateRecipeCost(costLines);
   }, [scaledLines, ingredientMap]);
 
+  function commitBatch(next: PositiveNumber) {
+    setBatchSize(next);
+    setBatchInput(next.toLocaleString());
+  }
+
   function handleStep(delta: number) {
-    setBatchSize((current) => stepBatchSize(current, delta));
+    commitBatch(stepBatchSize(batchSize, delta));
+  }
+
+  function handleBatchInputChange(raw: string) {
+    setBatchInput(raw);
+    const result = parsePositiveNumber(Number(raw.replaceAll(",", "")));
+    if (result.ok) setBatchSize(result.value);
+  }
+
+  function handleBatchInputBlur() {
+    const result = parsePositiveNumber(Number(batchInput.replaceAll(",", "")));
+    setBatchInput(result.ok ? result.value.toLocaleString() : batchSize.toLocaleString());
   }
 
   async function handleDelete() {
@@ -169,7 +210,11 @@ function RecipeDetailView({
           <h1 className="text-2xl font-bold text-gray-900">{recipe.name}</h1>
           <p className="mt-1 text-sm text-gray-500">재료 {lines.length}개</p>
         </div>
-        {category && <Badge label={category.name} colorHex={category.colorHex} />}
+        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+          {categories.map((c) => (
+            <Badge key={c.id} label={c.name} colorHex={c.colorHex} />
+          ))}
+        </div>
       </header>
 
       {recipe.memo.trim() !== "" && (
@@ -190,9 +235,15 @@ function RecipeDetailView({
           >
             −
           </button>
-          <span className="min-w-[7rem] text-center text-3xl font-bold text-brand">
-            {batchSize.toLocaleString()}
-          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="배치량"
+            value={batchInput}
+            onChange={(e) => handleBatchInputChange(e.target.value)}
+            onBlur={handleBatchInputBlur}
+            className="w-32 border-transparent bg-transparent p-0 text-center text-3xl font-bold text-brand shadow-none outline-none focus-visible:border-transparent"
+          />
           <button
             type="button"
             aria-label="배치량 증가"
@@ -235,20 +286,14 @@ function RecipeDetailView({
       </div>
 
       <div className="space-y-3">
-        <SectionTitle
-          tone="brand"
-          action={
-            <Link
-              href={`/recipes/${recipe.id}/history`}
-              className="text-sm font-semibold text-brand"
-            >
-              전체 보기
-            </Link>
-          }
-        >
-          수정이력
-        </SectionTitle>
-        <VersionHistory versions={versions} limit={3} bare />
+        <SectionTitle tone="brand">수정이력</SectionTitle>
+        <VersionList
+          versions={versions}
+          ingredients={ingredients}
+          limit={3}
+          onRestore={setPendingRestore}
+          restoreLabel="이 버전으로 복원"
+        />
       </div>
 
       <ConfirmDialog
@@ -259,6 +304,17 @@ function RecipeDetailView({
         destructive
         onConfirm={handleDelete}
         onCancel={() => setPendingDelete(false)}
+      />
+
+      <ConfirmDialog
+        open={pendingRestore !== null}
+        title="버전 복원"
+        description={`v${pendingRestore?.versionNo ?? ""} 내용으로 되돌립니다. 현재 내용은 새 버전으로 남아 있어요. 복원할까요?`}
+        confirmLabel="복원"
+        onConfirm={() => {
+          if (pendingRestore) handleRestore(pendingRestore);
+        }}
+        onCancel={() => setPendingRestore(null)}
       />
     </main>
   );

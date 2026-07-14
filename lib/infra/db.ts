@@ -100,6 +100,22 @@ async function upgradeToV2(tx: Transaction): Promise<void> {
   await tx.table("daily_checklist").clear();
 }
 
+// v3: 카테고리 단일(categoryId) → 다중(categoryIds) 전환.
+async function upgradeToV3(tx: Transaction): Promise<void> {
+  for (const tableName of ["recipes", "ingredients"]) {
+    await tx
+      .table(tableName)
+      .toCollection()
+      .modify((row: Record<string, unknown>) => {
+        if (!("categoryIds" in row)) {
+          const legacy = row.categoryId;
+          row.categoryIds = legacy == null ? [] : [legacy];
+        }
+        delete row.categoryId;
+      });
+  }
+}
+
 export class GelatoDB extends Dexie {
   recipes!: EntityTable<Recipe, "id">;
   recipe_versions!: EntityTable<RecipeVersion, "id">;
@@ -139,6 +155,21 @@ export class GelatoDB extends Dexie {
         package_units: "id",
       })
       .upgrade(upgradeToV2);
+
+    // v3: categoryId(단일) → categoryIds(다중). categoryId 인덱스는 쿼리에 미사용이라 제거.
+    this.version(3)
+      .stores({
+        recipes: "id",
+        recipe_versions: "id, recipeId",
+        ingredients: "id, supplierId",
+        ingredient_price_history: "id, ingredientId, recordedAt",
+        suppliers: "id",
+        daily_checklist: "id, date, recipeId",
+        recipe_categories: "id",
+        ingredient_categories: "id",
+        package_units: "id",
+      })
+      .upgrade(upgradeToV3);
   }
 }
 

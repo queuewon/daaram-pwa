@@ -4,11 +4,14 @@ import type { NonNegativeNumber, PositiveNumber } from "./numbers";
 
 export const ingredientFormInputSchema = z.object({
   name: z.string().min(1),
-  categoryId: z
-    .string()
-    .min(1)
-    .transform((v) => v as IngredientCategoryId)
-    .nullable(),
+  categoryIds: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .transform((v) => v as IngredientCategoryId),
+    )
+    .default([]),
   supplierId: z
     .string()
     .min(1)
@@ -27,6 +30,10 @@ export const ingredientFormInputSchema = z.object({
     .min(0)
     .transform((n) => n as NonNegativeNumber),
   stockUnit: z.string().min(1),
+  unitWeightGram: z
+    .number()
+    .gt(0)
+    .transform((n) => n as PositiveNumber),
 });
 
 export type IngredientFormInput = z.infer<typeof ingredientFormInputSchema>;

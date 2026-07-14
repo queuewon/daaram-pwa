@@ -12,7 +12,8 @@ export function filterRecipes(recipes: readonly Recipe[], filter: RecipeListFilt
   return recipes.filter((recipe) => {
     const matchesSearchText =
       normalizedSearchText === "" || recipe.name.toLowerCase().includes(normalizedSearchText);
-    const matchesCategory = filter.categoryId === null || recipe.categoryId === filter.categoryId;
+    const matchesCategory =
+      filter.categoryId === null || recipe.categoryIds.includes(filter.categoryId);
     return matchesSearchText && matchesCategory;
   });
 }

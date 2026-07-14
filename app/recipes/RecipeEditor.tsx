@@ -8,6 +8,7 @@ import { useRecipeCategoryStore } from "@/store/labelStores";
 import { calculateRecipeCost, type CostLineItem } from "@/lib/domain/cost";
 import { scaleBatch } from "@/lib/domain/batch";
 import { parseRecipeSnapshot, type RecipeSnapshotLine } from "@/lib/domain/recipeSnapshot";
+import { CATEGORY_COLOR_PRESETS } from "@/lib/domain/labelColor";
 import {
   parseNonNegativeNumber,
   parsePositiveNumber,
@@ -16,8 +17,12 @@ import {
 import type { Ingredient, RecipeVersion } from "@/lib/domain/entities";
 import type { IngredientId, RecipeCategoryId, RecipeId } from "@/lib/domain/ids";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Badge } from "@/components/ui/Badge";
-import VersionHistory from "./VersionHistory";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { FilterChip } from "@/components/ui/FilterChip";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import VersionList from "./VersionList";
+import IngredientPickerModal from "./IngredientPickerModal";
 
 interface RecipeLineForm {
   ingredientId: IngredientId | "";
@@ -57,7 +62,7 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
     return (
       <RecipeEditorForm
         recipeId={null}
-        initialCategoryId={null}
+        initialCategoryIds={[]}
         initialBatchSize={1000}
         initialLines={[]}
         versions={[]}
@@ -89,7 +94,7 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
     <RecipeEditorForm
       recipeId={recipeId}
       initialName={recipe.name}
-      initialCategoryId={recipe.categoryId}
+      initialCategoryIds={recipe.categoryIds}
       initialMemo={recipe.memo}
       initialBatchSize={snapshotResult.value.batchSize}
       initialLines={snapshotResult.value.lines.map(toLineForm)}
@@ -101,7 +106,7 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
 interface RecipeEditorFormProps {
   recipeId: RecipeId | null;
   initialName?: string;
-  initialCategoryId: RecipeCategoryId | null;
+  initialCategoryIds: RecipeCategoryId[];
   initialMemo?: string;
   initialBatchSize: number;
   initialLines: RecipeLineForm[];
@@ -111,7 +116,7 @@ interface RecipeEditorFormProps {
 function RecipeEditorForm({
   recipeId,
   initialName = "",
-  initialCategoryId,
+  initialCategoryIds,
   initialMemo = "",
   initialBatchSize,
   initialLines,
@@ -121,14 +126,23 @@ function RecipeEditorForm({
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const ingredients = useIngredientStore((s) => s.ingredients);
   const recipeCategories = useRecipeCategoryStore((s) => s.items);
+  const saveRecipeCategory = useRecipeCategoryStore((s) => s.saveLabel);
 
   const [name, setName] = useState(initialName);
-  const [categoryId, setCategoryId] = useState<RecipeCategoryId | "">(initialCategoryId ?? "");
+  const [categoryIds, setCategoryIds] = useState<RecipeCategoryId[]>(initialCategoryIds);
+
+  function toggleCategory(id: RecipeCategoryId) {
+    setCategoryIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  }
   const [memo, setMemo] = useState(initialMemo);
   const [batchSize, setBatchSize] = useState(initialBatchSize);
   const [lines, setLines] = useState<RecipeLineForm[]>(initialLines);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const ingredientMap = useMemo(
     () => new Map<IngredientId, Ingredient>(ingredients.map((i) => [i.id, i])),
@@ -177,16 +191,42 @@ function RecipeEditorForm({
     setBatchSize(nextValue);
   }
 
-  function handleAddLine() {
-    setLines((prev) => [...prev, { ingredientId: "", quantityGram: 0 }]);
+  function handleSelectIngredient(ingredientId: IngredientId) {
+    setLines((prev) =>
+      prev.some((l) => l.ingredientId === ingredientId)
+        ? prev
+        : [...prev, { ingredientId, quantityGram: 0 }],
+    );
+    setPickerOpen(false);
+  }
+
+  async function handleAddCategory() {
+    const trimmed = newCategoryName.trim();
+    if (trimmed === "") {
+      setCategoryError("이름을 입력해 주세요.");
+      return;
+    }
+    setCategoryError(null);
+    const colorHex =
+      CATEGORY_COLOR_PRESETS[recipeCategories.length % CATEGORY_COLOR_PRESETS.length];
+    const result = await saveRecipeCategory({ id: null, form: { name: trimmed, colorHex } });
+    if (!result.ok) {
+      setCategoryError("추가에 실패했습니다 (이름 필수).");
+      return;
+    }
+    setCategoryIds((prev) => [...prev, result.value.id]);
+    setNewCategoryName("");
+    setAddingCategory(false);
+  }
+
+  function handleCancelAddCategory() {
+    setAddingCategory(false);
+    setNewCategoryName("");
+    setCategoryError(null);
   }
 
   function handleRemoveLine(index: number) {
     setLines((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function handleLineIngredientChange(index: number, ingredientId: IngredientId) {
-    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ingredientId } : l)));
   }
 
   function handleLineQuantityChange(index: number, quantityGram: number) {
@@ -207,7 +247,7 @@ function RecipeEditorForm({
 
     const form = {
       name,
-      categoryId: categoryId === "" ? null : categoryId,
+      categoryIds,
       batchSize,
       memo,
       lines: lines
@@ -229,128 +269,215 @@ function RecipeEditorForm({
       return;
     }
 
-    router.push(`/recipes/${result.value.id}`);
+    router.push("/recipes");
   }
 
-  const selectedCategory =
-    categoryId === "" ? undefined : recipeCategories.find((c) => c.id === categoryId);
+  const fieldClass = "w-full border-pink-200 focus-visible:border-brand";
+  const labelClass = "text-brand";
 
   return (
     <main>
-      <PageHeader title={recipeId ? "레시피 수정" : "새 레시피"} />
+      <PageHeader title={recipeId ? "레시피 수정" : "레시피 등록"} tone="brand" back />
 
-      <div>
-        <label htmlFor="recipe-name">이름</label>
+      <div className="space-y-1.5">
+        <label htmlFor="recipe-name" className={labelClass}>
+          레시피명
+        </label>
         <input
           id="recipe-name"
-          className="w-full"
+          className={fieldClass}
+          placeholder="예: 피스타치오 젤라또"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
 
-      <div>
-        <label htmlFor="recipe-category">카테고리</label>
-        <select
-          id="recipe-category"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value as RecipeCategoryId | "")}
-        >
-          <option value="">카테고리 없음</option>
+      <div className="space-y-2">
+        <span className={`block text-sm font-medium ${labelClass}`}>카테고리</span>
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
           {recipeCategories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
+            <FilterChip
+              key={category.id}
+              label={category.name}
+              tone="brand"
+              active={categoryIds.includes(category.id)}
+              onClick={() => toggleCategory(category.id)}
+            />
           ))}
-        </select>
-        {selectedCategory && (
-          <Badge label={selectedCategory.name} colorHex={selectedCategory.colorHex} />
+          {!addingCategory && (
+            <button
+              type="button"
+              onClick={() => setAddingCategory(true)}
+              className="shrink-0 rounded-full border border-dashed border-pink-300 px-4 py-1.5 text-sm font-medium text-brand hover:bg-brand-soft"
+            >
+              + 추가
+            </button>
+          )}
+        </div>
+        {addingCategory && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                className="flex-1 border-pink-200 focus-visible:border-brand"
+                placeholder="새 카테고리명"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCategory();
+                  }
+                }}
+              />
+              <Button type="button" tone="brand" variant="solid" onClick={handleAddCategory}>
+                확인
+              </Button>
+              <Button
+                type="button"
+                tone="neutral"
+                variant="outline"
+                onClick={handleCancelAddCategory}
+              >
+                취소
+              </Button>
+            </div>
+            {categoryError && <p className="text-sm text-danger">{categoryError}</p>}
+          </div>
         )}
       </div>
 
-      <div>
-        <label htmlFor="recipe-batch-size">배치량(g)</label>
+      <div className="space-y-1.5">
+        <label htmlFor="recipe-batch-size" className={labelClass}>
+          기본 배치량 (G)
+        </label>
         <input
           id="recipe-batch-size"
           type="number"
+          className={fieldClass}
+          placeholder="5000"
           value={batchSize}
           onChange={(e) => handleBatchSizeChange(Number(e.target.value))}
         />
       </div>
 
-      <div>
-        <label htmlFor="recipe-memo">메모</label>
+      <div className="space-y-1.5">
+        <label htmlFor="recipe-memo" className={labelClass}>
+          메모 (선택)
+        </label>
         <textarea
           id="recipe-memo"
-          className="w-full"
+          className={`${fieldClass} min-h-24`}
+          placeholder="메모를 입력하세요"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
         />
       </div>
 
-      <section>
-        <h2>재료</h2>
-        <ul className="divide-y divide-gray-200 border border-gray-200 rounded">
-          {lines.map((line, index) => (
-            <li key={index} className="flex items-center gap-2 px-3 py-2">
-              <select
-                value={line.ingredientId}
-                onChange={(e) => handleLineIngredientChange(index, e.target.value as IngredientId)}
-              >
-                <option value="">재료 선택</option>
-                {ingredients.map((ingredient) => (
-                  <option key={ingredient.id} value={ingredient.id}>
-                    {ingredient.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                className="w-24"
-                value={line.quantityGram}
-                onChange={(e) => handleLineQuantityChange(index, Number(e.target.value))}
-              />
-              <span>g</span>
-              <button type="button" onClick={() => handleRemoveLine(index)}>
-                삭제
-              </button>
-            </li>
-          ))}
-        </ul>
-        <button type="button" onClick={handleAddLine}>
-          재료 추가
-        </button>
-      </section>
-
-      <section>
-        <h2>원가</h2>
-        <ul className="divide-y divide-gray-200 border border-gray-200 rounded">
-          {costResult.perLineCostKrw.map((line) => (
-            <li key={line.ingredientId} className="flex items-center justify-between px-3 py-2">
-              <span>{ingredientMap.get(line.ingredientId)?.name ?? line.ingredientId}</span>
-              <span>{line.costKrw.toLocaleString()}원</span>
-            </li>
-          ))}
-        </ul>
-        <p className="font-semibold">합계: {costResult.totalCostKrw.toLocaleString()}원</p>
-      </section>
+      <div className="space-y-3">
+        <SectionTitle
+          tone="brand"
+          action={
+            <Button type="button" tone="brand" variant="soft" onClick={() => setPickerOpen(true)}>
+              + 재료 추가
+            </Button>
+          }
+        >
+          재료
+        </SectionTitle>
+        {lines.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="w-full rounded-2xl border-2 border-dashed border-pink-200 py-8 text-center text-sm text-gray-400 hover:bg-brand-soft"
+          >
+            재료를 추가해주세요
+          </button>
+        ) : (
+          <ul className="space-y-3">
+            {lines.map((line, index) => (
+              <li key={index}>
+                <Card accent="brand" className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate font-medium text-gray-800">
+                    {ingredientMap.get(line.ingredientId as IngredientId)?.name ??
+                      "알 수 없는 재료"}
+                  </span>
+                  <input
+                    type="number"
+                    aria-label="사용량(g)"
+                    className="w-20"
+                    value={line.quantityGram}
+                    onChange={(e) => handleLineQuantityChange(index, Number(e.target.value))}
+                  />
+                  <span className="shrink-0 text-sm text-gray-500">g</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveLine(index)}
+                    className="shrink-0 border-none px-1 text-sm text-gray-400 hover:bg-transparent hover:text-danger"
+                  >
+                    삭제
+                  </button>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {errorMessage && (
-        <p role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-red-700">
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger"
+        >
           {errorMessage}
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={isSaving}
-        className="border-gray-900 font-medium"
-      >
-        저장
-      </button>
+      {recipeId && (
+        <div className="space-y-3">
+          <SectionTitle tone="brand">수정 이력</SectionTitle>
+          <VersionList
+            versions={versions}
+            ingredients={ingredients}
+            limit={3}
+            onRestore={handleRestore}
+            restoreLabel="이 버전으로 복원"
+          />
+        </div>
+      )}
 
-      {recipeId && <VersionHistory versions={versions} onRestore={handleRestore} />}
+      <div aria-hidden="true" className="h-28" />
+      <div
+        className="fixed inset-x-0 z-30 border-t border-gray-100 bg-white"
+        style={{ bottom: "calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <div className="mx-auto max-w-2xl space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-gray-800">총 원가</span>
+            <span className="text-lg font-bold text-danger">
+              {costResult.totalCostKrw.toLocaleString()}원
+            </span>
+          </div>
+          <Button
+            type="button"
+            tone="brand"
+            variant="solid"
+            fullWidth
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {recipeId ? "수정" : "등록"}
+          </Button>
+        </div>
+      </div>
+
+      {pickerOpen && (
+        <IngredientPickerModal
+          ingredients={ingredients}
+          onSelect={handleSelectIngredient}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </main>
   );
 }

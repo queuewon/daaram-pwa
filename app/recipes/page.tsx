@@ -70,7 +70,12 @@ export default function RecipesPage() {
         }
       />
 
-      <SearchBar value={searchText} onChange={setSearchText} placeholder="레시피 검색" />
+      <SearchBar
+        value={searchText}
+        onChange={setSearchText}
+        placeholder="레시피 검색"
+        tone="brand"
+      />
 
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         <FilterChip
@@ -91,18 +96,22 @@ export default function RecipesPage() {
       </div>
 
       {filteredRecipes.length === 0 ? (
-        recipes.length === 0 ? (
-          <EmptyState title="아직 등록된 레시피가 없습니다" subtitle="새 레시피를 추가해 보세요" />
-        ) : (
-          <EmptyState
-            title="조건에 맞는 레시피가 없습니다"
-            subtitle="검색어나 카테고리를 확인해 보세요"
-          />
-        )
+        <div className="flex min-h-[50vh] items-center justify-center">
+          {recipes.length === 0 ? (
+            <EmptyState title="레시피가 없어요" subtitle="+ 버튼으로 추가해보세요" graphic />
+          ) : (
+            <EmptyState
+              title="조건에 맞는 레시피가 없어요"
+              subtitle="검색어나 카테고리를 확인해 보세요"
+            />
+          )}
+        </div>
       ) : (
         <ul className="space-y-3">
           {filteredRecipes.map((recipe) => {
-            const category = recipe.categoryId ? categoryMap.get(recipe.categoryId) : undefined;
+            const categories = recipe.categoryIds
+              .map((id) => categoryMap.get(id))
+              .filter((c): c is NonNullable<typeof c> => c !== undefined);
             const ingredientCount = ingredientCountOf(recipe, latestVersionMap);
             return (
               <li key={recipe.id}>
@@ -112,7 +121,11 @@ export default function RecipesPage() {
                       <p className="truncate font-bold text-gray-900">{recipe.name}</p>
                       <p className="mt-1 text-sm text-gray-500">재료 {ingredientCount}개</p>
                     </div>
-                    {category && <Badge label={category.name} colorHex={category.colorHex} />}
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                      {categories.map((c) => (
+                        <Badge key={c.id} label={c.name} colorHex={c.colorHex} />
+                      ))}
+                    </div>
                   </Card>
                 </Link>
               </li>

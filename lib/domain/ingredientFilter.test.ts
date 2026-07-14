@@ -22,24 +22,25 @@ const categoryB = "category-b" as IngredientCategoryId;
 function ingredient(params: {
   id: string;
   name: string;
-  categoryId?: IngredientCategoryId | null;
+  categoryIds?: IngredientCategoryId[];
 }): Ingredient {
   return {
     id: params.id as IngredientId,
     name: params.name,
-    categoryId: params.categoryId ?? null,
+    categoryIds: params.categoryIds ?? [],
     supplierId: null,
     packagePrice: nn(1000),
     packageAmount: pos(500),
     pricePerGram: nn(2),
     stockCount: nn(5),
     stockUnit: "개",
+    unitWeightGram: pos(1),
   };
 }
 
-const strawberryPuree = ingredient({ id: "i1", name: "딸기 퓨레", categoryId: categoryA });
-const mangoPuree = ingredient({ id: "i2", name: "망고 퓨레", categoryId: categoryB });
-const uncategorized = ingredient({ id: "i3", name: "설탕", categoryId: null });
+const strawberryPuree = ingredient({ id: "i1", name: "딸기 퓨레", categoryIds: [categoryA] });
+const mangoPuree = ingredient({ id: "i2", name: "망고 퓨레", categoryIds: [categoryB] });
+const uncategorized = ingredient({ id: "i3", name: "설탕", categoryIds: [] });
 
 const ingredients = [strawberryPuree, mangoPuree, uncategorized];
 
@@ -83,6 +84,13 @@ describe("filterIngredients", () => {
     expect(filterIngredients(ingredients, { searchText: "망고", categoryId: categoryA })).toEqual(
       [],
     );
+  });
+
+  it("여러 카테고리를 가진 재료는 각 카테고리 필터에 모두 매칭된다", () => {
+    const multi = ingredient({ id: "i5", name: "믹스", categoryIds: [categoryA, categoryB] });
+    const list = [multi];
+    expect(filterIngredients(list, { searchText: "", categoryId: categoryA })).toEqual([multi]);
+    expect(filterIngredients(list, { searchText: "", categoryId: categoryB })).toEqual([multi]);
   });
 
   it("조건에 맞는 재료가 없으면 빈 배열을 반환한다", () => {

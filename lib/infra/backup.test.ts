@@ -31,7 +31,7 @@ async function addRecipe(id: string) {
   await db.recipes.add({
     id: id as RecipeId,
     name: `레시피 ${id}`,
-    categoryId: null,
+    categoryIds: [],
     batchSize: pos(1000),
     memo: "",
     createdAt: "2026-07-10T00:00:00.000Z",
@@ -120,7 +120,7 @@ describe("importBackup 트랜잭션 원자성 (F5)", () => {
           {
             id: "new-recipe" as RecipeId,
             name: "새 레시피",
-            categoryId: null,
+            categoryIds: [],
             batchSize: pos(1000),
             memo: "",
             createdAt: "2026-07-11T00:00:00.000Z",
@@ -150,6 +150,54 @@ describe("importBackup 트랜잭션 원자성 (F5)", () => {
 
     expect(await db.recipes.toArray()).toEqual(beforeRecipes);
     expect(await db.recipe_versions.toArray()).toEqual(beforeVersions);
+  });
+});
+
+describe("importBackup 하위호환 (F5)", () => {
+  it("unitWeightGram이 없는 옛 백업의 재료는 unitWeightGram=1로 복원한다", async () => {
+    const backup = buildEmptyBackupFile();
+    // 구버전 백업: 재료에 unitWeightGram 필드 없음
+    backup.data.ingredients = [
+      {
+        id: "ing-legacy",
+        name: "우유",
+        categoryIds: [],
+        supplierId: null,
+        packagePrice: 1000,
+        packageAmount: 500,
+        pricePerGram: 2,
+        stockCount: 0,
+        stockUnit: "봉",
+      },
+    ] as never;
+
+    const result = await importBackup(backup, { forceEmpty: true });
+
+    expect(result.ok).toBe(true);
+    const restored = await db.ingredients.get("ing-legacy" as never);
+    expect(restored?.unitWeightGram).toBe(1);
+  });
+
+  it("categoryId만 있는 옛 백업은 categoryIds로 정규화해 복원한다", async () => {
+    const backup = buildEmptyBackupFile();
+    backup.data.recipes = [
+      {
+        id: "r-legacy",
+        name: "딸기",
+        categoryId: "cat-1",
+        batchSize: 1000,
+        memo: "",
+        createdAt: "2026-07-01T00:00:00.000Z",
+        updatedAt: "2026-07-01T00:00:00.000Z",
+      },
+    ] as never;
+
+    const result = await importBackup(backup, { forceEmpty: true });
+
+    expect(result.ok).toBe(true);
+    const restored = await db.recipes.get("r-legacy" as never);
+    expect(restored?.categoryIds).toEqual(["cat-1"]);
+    expect(restored).not.toHaveProperty("categoryId");
   });
 });
 
