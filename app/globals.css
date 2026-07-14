@@ -15,37 +15,57 @@
   --tab-bar-height: 3.5rem;
 }
 
-body {
-  @apply text-gray-900 antialiased;
-}
+/*
+ * 전역 요소 스타일은 반드시 @layer base 안에 둔다.
+ * Tailwind v4에서 레이어 밖(unlayered) 규칙은 @layer utilities보다 우선하기 때문에,
+ * base 밖에 두면 button/input 규칙이 rounded-full·rounded-2xl 같은 유틸리티를 덮어써
+ * 칩·버튼·검색창이 각지게 렌더된다. base에 넣어야 유틸리티가 정상적으로 이긴다.
+ */
+@layer base {
+  body {
+    @apply bg-white text-gray-900 antialiased;
+  }
 
-main {
-  @apply mx-auto max-w-2xl space-y-6 p-6;
-  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 1.5rem);
-}
+  main {
+    @apply mx-auto max-w-2xl space-y-6 p-6;
+    padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  }
 
-h1 {
-  @apply text-xl font-bold;
-}
+  h1 {
+    @apply text-xl font-bold;
+  }
 
-h2 {
-  @apply text-lg font-semibold;
-}
+  h2 {
+    @apply text-base font-bold text-gray-900;
+  }
 
-section {
-  @apply space-y-3 border-t border-gray-200 pt-4;
-}
+  section {
+    @apply space-y-3;
+  }
 
-label {
-  @apply block text-sm font-medium text-gray-700;
-}
+  label {
+    @apply block text-sm font-medium text-gray-700;
+  }
 
-input,
-textarea,
-select {
-  @apply rounded border border-gray-300 px-2 py-1;
-}
+  input,
+  textarea,
+  select {
+    @apply rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none;
+  }
 
-button {
-  @apply rounded border border-gray-400 px-3 py-1 hover:bg-gray-100;
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-gray-400;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply border-gray-400;
+  }
+
+  /* 기본(무톤) 버튼: 컴포넌트(Button)와 유틸리티가 클래스로 덮어쓴다. */
+  button {
+    @apply rounded-lg border border-gray-300 px-3.5 py-2 text-sm transition hover:bg-gray-50;
+  }
 }
