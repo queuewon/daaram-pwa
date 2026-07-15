@@ -437,7 +437,7 @@ function IngredientEditorForm({
         </div>
         {suppliers.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-amber-200 py-6 text-center text-sm text-gray-400">
-            등록된 공급업체가 없어요
+            등록된 공급업체가 없습니다
           </div>
         ) : (
           <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">

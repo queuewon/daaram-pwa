@@ -78,7 +78,7 @@ export default function IngredientPickerModal({
 
         {filtered.length === 0 ? (
           <p className="pt-8 text-center text-sm text-gray-400">
-            {ingredients.length === 0 ? "등록된 재료가 없어요" : "검색 결과가 없어요"}
+            {ingredients.length === 0 ? "등록된 재료가 없습니다" : "검색 결과가 없습니다"}
           </p>
         ) : (
           <ul className="space-y-3">

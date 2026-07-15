@@ -55,7 +55,7 @@ export default function LabelManager<L extends Label<TId>, TId extends string>({
         <SectionTitle tone={tone}>{registeredTitle}</SectionTitle>
 
         {items.length === 0 ? (
-          <EmptyState title="아직 등록된 항목이 없습니다" subtitle="아래에서 새로 추가해 보세요" />
+          <EmptyState title="등록된 항목이 없습니다" subtitle="아래에서 새로 추가하세요" />
         ) : (
           <ul className="space-y-3">
             {items.map((item) => (

@@ -51,9 +51,9 @@ export default function HomePage() {
       </header>
 
       <div className="space-y-1">
-        <p className="text-xl font-bold text-gray-900">안녕, 누나!</p>
+        <p className="text-xl font-bold text-gray-900">안녕하세요, 아람씨!</p>
         <p className="text-sm text-gray-500">
-          오늘도 맛있는 젤라또 만들자! (김경원이 만들어준 어플 ^^b)
+          오늘도 맛있는 젤라또 만들어봐요! (김경원이 만들어준 어플 ^^b)
         </p>
       </div>
 
@@ -76,7 +76,7 @@ export default function HomePage() {
         </div>
         {progress.total === 0 && (
           <div className="flex flex-col items-center gap-3 pt-2 text-center">
-            <p className="text-sm text-gray-500">오늘 만들 메뉴가 없네... 까먹은거 아니지?</p>
+            <p className="text-sm text-gray-500">오늘 만들 메뉴가 없습니다.</p>
             <Link href="/checklist">
               <Button tone="data" variant="soft">
                 메뉴 추가하기

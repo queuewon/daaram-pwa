@@ -116,8 +116,8 @@ export default function ChecklistPage() {
 
       {items.length === 0 ? (
         <EmptyState
-          title={isToday ? "비어있네. 일해" : "이 날은 생산 기록이 없어요"}
-          subtitle="아래 버튼으로 메뉴를 추가해보세요"
+          title={isToday ? "오늘 생산할 메뉴가 없습니다" : "이 날은 생산 기록이 없습니다"}
+          subtitle="아래 버튼으로 메뉴를 추가하세요"
           graphic
         />
       ) : (

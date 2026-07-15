@@ -34,7 +34,7 @@ export default function SuppliersPage() {
 
       {suppliers.length === 0 ? (
         <div className="flex min-h-[50vh] items-center justify-center">
-          <EmptyState title="공급업체가 없어요" subtitle="+ 새 공급업체로 추가해보세요" graphic />
+          <EmptyState title="공급업체가 없습니다" subtitle="+ 버튼으로 추가하세요" graphic />
         </div>
       ) : (
         <ul className="space-y-3">

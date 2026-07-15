@@ -84,11 +84,11 @@ export default function IngredientsPage() {
       {filteredIngredients.length === 0 ? (
         <div className="flex min-h-[50vh] items-center justify-center">
           {ingredients.length === 0 ? (
-            <EmptyState title="재료가 없어요" subtitle="+ 버튼으로 추가해보세요" graphic />
+            <EmptyState title="재료가 없습니다" subtitle="+ 버튼으로 추가하세요" graphic />
           ) : (
             <EmptyState
-              title="조건에 맞는 재료가 없어요"
-              subtitle="검색어나 카테고리를 확인해 보세요"
+              title="조건에 맞는 재료가 없습니다"
+              subtitle="검색어나 카테고리를 확인하세요"
             />
           )}
         </div>

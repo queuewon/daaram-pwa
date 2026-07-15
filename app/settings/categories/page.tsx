@@ -49,7 +49,7 @@ export default function CategoriesPage() {
       <Card accent="neutral" className="space-y-1">
         <p className="font-bold text-gray-900">라벨을 예쁘게 정리</p>
         <p className="text-sm text-gray-500">
-          레시피·재료·단위 라벨에 색상을 입혀 한눈에 구분할 수 있게 해봤음.
+          레시피·재료·단위 라벨에 색상을 입혀 한눈에 구분할 수 있습니다.
         </p>
       </Card>
 
