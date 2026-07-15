@@ -16,6 +16,11 @@ export interface ScaledLine {
   scaledQuantityGram: number;
 }
 
+/** 기본 배치량 = 재료 사용량(g)의 합. */
+export function totalBatchGram(lines: readonly { quantityGram: number }[]): number {
+  return lines.reduce((sum, line) => sum + line.quantityGram, 0);
+}
+
 export function scaleBatch(input: ScaleBatchInput): readonly ScaledLine[] {
   const ratio = input.targetYieldGram / input.baseYieldGram;
 

@@ -6,14 +6,10 @@ import { useRecipeStore } from "@/store/recipeStore";
 import { useIngredientStore } from "@/store/ingredientStore";
 import { useRecipeCategoryStore } from "@/store/labelStores";
 import { calculateRecipeCost, type CostLineItem } from "@/lib/domain/cost";
-import { scaleBatch } from "@/lib/domain/batch";
+import { totalBatchGram } from "@/lib/domain/batch";
 import { parseRecipeSnapshot, type RecipeSnapshotLine } from "@/lib/domain/recipeSnapshot";
 import { CATEGORY_COLOR_PRESETS } from "@/lib/domain/labelColor";
-import {
-  parseNonNegativeNumber,
-  parsePositiveNumber,
-  type NonNegativeNumber,
-} from "@/lib/domain/numbers";
+import { parseNonNegativeNumber, type NonNegativeNumber } from "@/lib/domain/numbers";
 import type { Ingredient, RecipeVersion } from "@/lib/domain/entities";
 import type { IngredientId, RecipeCategoryId, RecipeId } from "@/lib/domain/ids";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -60,13 +56,7 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
 
   if (recipeId === null) {
     return (
-      <RecipeEditorForm
-        recipeId={null}
-        initialCategoryIds={[]}
-        initialBatchSize={1000}
-        initialLines={[]}
-        versions={[]}
-      />
+      <RecipeEditorForm recipeId={null} initialCategoryIds={[]} initialLines={[]} versions={[]} />
     );
   }
 
@@ -96,7 +86,6 @@ export default function RecipeEditor({ recipeId }: RecipeEditorProps) {
       initialName={recipe.name}
       initialCategoryIds={recipe.categoryIds}
       initialMemo={recipe.memo}
-      initialBatchSize={snapshotResult.value.batchSize}
       initialLines={snapshotResult.value.lines.map(toLineForm)}
       versions={versions}
     />
@@ -108,7 +97,6 @@ interface RecipeEditorFormProps {
   initialName?: string;
   initialCategoryIds: RecipeCategoryId[];
   initialMemo?: string;
-  initialBatchSize: number;
   initialLines: RecipeLineForm[];
   versions: RecipeVersion[];
 }
@@ -118,7 +106,6 @@ function RecipeEditorForm({
   initialName = "",
   initialCategoryIds,
   initialMemo = "",
-  initialBatchSize,
   initialLines,
   versions,
 }: RecipeEditorFormProps) {
@@ -135,7 +122,6 @@ function RecipeEditorForm({
     setCategoryIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
   }
   const [memo, setMemo] = useState(initialMemo);
-  const [batchSize, setBatchSize] = useState(initialBatchSize);
   const [lines, setLines] = useState<RecipeLineForm[]>(initialLines);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -162,34 +148,8 @@ function RecipeEditorForm({
     return calculateRecipeCost(costLines);
   }, [lines, ingredientMap]);
 
-  function handleBatchSizeChange(nextValue: number) {
-    const basePos = parsePositiveNumber(batchSize);
-    const targetPos = parsePositiveNumber(nextValue);
-
-    if (basePos.ok && targetPos.ok && lines.length > 0) {
-      const scaled = scaleBatch({
-        baseYieldGram: basePos.value,
-        targetYieldGram: targetPos.value,
-        lines: lines
-          .filter(
-            (l): l is RecipeLineForm & { ingredientId: IngredientId } => l.ingredientId !== "",
-          )
-          .map((l) => ({
-            ingredientId: l.ingredientId,
-            quantityGram: toNonNegative(l.quantityGram),
-          })),
-      });
-      setLines((prev) =>
-        prev.map((l) => {
-          if (l.ingredientId === "") return l;
-          const match = scaled.find((s) => s.ingredientId === l.ingredientId);
-          return match ? { ...l, quantityGram: match.scaledQuantityGram } : l;
-        }),
-      );
-    }
-
-    setBatchSize(nextValue);
-  }
+  // 기본 배치량 = 재료 사용량 합(자동). 편집기에서는 재료량을 직접 편집한다.
+  const totalGram = totalBatchGram(lines.map((l) => ({ quantityGram: l.quantityGram })));
 
   function handleSelectIngredient(ingredientId: IngredientId) {
     setLines((prev) =>
@@ -237,7 +197,6 @@ function RecipeEditorForm({
     const snapshotResult = parseRecipeSnapshot(version.snapshotJson);
     if (!snapshotResult.ok) return;
 
-    setBatchSize(snapshotResult.value.batchSize);
     setLines(snapshotResult.value.lines.map(toLineForm));
   }
 
@@ -248,7 +207,6 @@ function RecipeEditorForm({
     const form = {
       name,
       categoryIds,
-      batchSize,
       memo,
       lines: lines
         .filter((l) => l.ingredientId !== "")
@@ -261,7 +219,7 @@ function RecipeEditorForm({
     if (!result.ok) {
       setErrorMessage(
         result.error.type === "InvalidForm"
-          ? "입력값을 확인해 주세요 (이름 필수, 배치량 0 초과, 재료 중복 불가)."
+          ? "입력값을 확인해 주세요 (이름 필수, 재료 1개 이상, 재료 중복 불가)."
           : result.error.type === "NotFound"
             ? "레시피를 찾을 수 없습니다."
             : "저장된 레시피 데이터가 손상되어 있습니다.",
@@ -348,20 +306,6 @@ function RecipeEditorForm({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="recipe-batch-size" className={labelClass}>
-          기본 배치량 (G)
-        </label>
-        <input
-          id="recipe-batch-size"
-          type="number"
-          className={fieldClass}
-          placeholder="5000"
-          value={batchSize}
-          onChange={(e) => handleBatchSizeChange(Number(e.target.value))}
-        />
-      </div>
-
-      <div className="space-y-1.5">
         <label htmlFor="recipe-memo" className={labelClass}>
           메모 (선택)
         </label>
@@ -385,6 +329,11 @@ function RecipeEditorForm({
         >
           재료
         </SectionTitle>
+        <p className="text-sm text-gray-500">
+          총량(기본 배치량){" "}
+          <span className="font-semibold text-gray-800">{totalGram.toLocaleString()}g</span> · 재료
+          합으로 자동 계산돼요
+        </p>
         {lines.length === 0 ? (
           <button
             type="button"
