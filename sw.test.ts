@@ -1,109 +1,62 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // public/sw.js는 순수 JS(classic worker)라 앱 번들에서 import되지 않는다.
-// 여기서는 SW 전역(self/caches/fetch)을 모킹해 install/activate 동작을 직접 검증한다. [F7]
+// SW 전역(self/caches/fetch)을 모킹해 "자폭(self-unregister)" 동작을 직접 검증한다. [F7]
 const swSource = readFileSync(fileURLToPath(new URL("./public/sw.js", import.meta.url)), "utf8");
-
-interface CacheObj {
-  name: string;
-  addAllArgs: string[][];
-  addAll(urls: string[]): Promise<void>;
-  match(): Promise<undefined>;
-  put(): Promise<void>;
-}
-
-interface CachesMock {
-  open(name: string): Promise<CacheObj>;
-  keys(): Promise<string[]>;
-  delete(name: string): Promise<boolean>;
-  match(): Promise<undefined>;
-}
 
 interface SwEvent {
   waitUntil(p: Promise<unknown>): void;
 }
 type Handler = (event: SwEvent) => void;
 
-interface SwGlobal {
-  addEventListener(type: string, handler: Handler): void;
-  skipWaiting(): void;
-  clients: { claim(): Promise<void> };
-  location: { origin: string };
+interface ClientMock {
+  url: string;
+  navigate: (url: string) => void;
 }
 
-interface LoadedSw {
-  handlers: Record<string, Handler>;
-  cachesMock: CachesMock;
-  cacheNames(): string[];
-  deleted(): string[];
-  /** install 시 addAll에 넘어간 모든 URL(모든 캐시 합산). */
-  precachedUrls(): string[];
-}
-
-/**
- * sw.js를 모킹된 SW 전역에서 실행한다.
- * redirecting: 이 경로들을 프리캐시하면 실제 브라우저처럼 addAll이 TypeError로 거부한다.
- */
-function loadServiceWorker(redirecting: Set<string>, initialCacheNames: string[] = []): LoadedSw {
+function loadServiceWorker(initialCacheNames: string[] = [], clients: ClientMock[] = []) {
   const handlers: Record<string, Handler> = {};
-  const store = new Map<string, CacheObj>();
+  const cacheNames = new Set(initialCacheNames);
   const deletedNames: string[] = [];
 
-  function makeCache(name: string): CacheObj {
-    const addAllArgs: string[][] = [];
-    return {
-      name,
-      addAllArgs,
-      async addAll(urls) {
-        addAllArgs.push([...urls]);
-        for (const url of urls) {
-          if (redirecting.has(url)) {
-            throw new TypeError(`Cache.addAll(): '${url}' 응답이 리다이렉트됨`);
-          }
-        }
-      },
-      async match() {
-        return undefined;
-      },
-      async put() {},
-    };
-  }
-
-  for (const name of initialCacheNames) store.set(name, makeCache(name));
-
-  const cachesMock: CachesMock = {
-    async open(name) {
-      if (!store.has(name)) store.set(name, makeCache(name));
-      return store.get(name) as CacheObj;
-    },
+  const cachesMock = {
     async keys() {
-      return [...store.keys()];
+      return [...cacheNames];
     },
-    async delete(name) {
+    async delete(name: string) {
       deletedNames.push(name);
-      return store.delete(name);
+      return cacheNames.delete(name);
+    },
+    async open() {
+      return { async addAll() {}, async match() {}, async put() {} };
     },
     async match() {
       return undefined;
     },
   };
 
-  const selfMock: SwGlobal = {
-    addEventListener(type, handler) {
+  const selfMock = {
+    addEventListener(type: string, handler: Handler) {
       handlers[type] = handler;
     },
-    skipWaiting() {},
-    clients: { async claim() {} },
+    skipWaiting: vi.fn(),
+    registration: { unregister: vi.fn(async () => {}) },
+    clients: {
+      async matchAll() {
+        return clients;
+      },
+      async claim() {},
+    },
     location: { origin: "https://daaram-pwa.vercel.app" },
   };
 
   const fetchMock = async (): Promise<unknown> => ({ ok: true, clone: () => ({}) });
 
   const factory = new Function("self", "caches", "fetch", "URL", swSource) as (
-    self: SwGlobal,
-    caches: CachesMock,
+    self: typeof selfMock,
+    caches: typeof cachesMock,
     fetch: () => Promise<unknown>,
     url: typeof globalThis.URL,
   ) => void;
@@ -111,58 +64,58 @@ function loadServiceWorker(redirecting: Set<string>, initialCacheNames: string[]
 
   return {
     handlers,
-    cachesMock,
-    cacheNames: () => [...store.keys()],
+    self: selfMock,
+    remainingCaches: () => [...cacheNames],
     deleted: () => deletedNames,
-    precachedUrls: () => [...store.values()].flatMap((c) => c.addAllArgs).flat(),
   };
 }
 
-describe("service worker install", () => {
-  it("리다이렉트되는 경로를 프리캐시하지 않아 install이 성공한다", async () => {
-    const sw = loadServiceWorker(new Set(["/"]));
-    let waited: Promise<unknown> | undefined;
-    sw.handlers.install({ waitUntil: (p) => (waited = p) });
-
-    await expect(waited).resolves.toBeUndefined();
+describe("service worker 자폭 — 더 이상 가로채지 않음", () => {
+  it("fetch 핸들러를 등록하지 않는다", () => {
+    const sw = loadServiceWorker();
+    expect(sw.handlers.fetch).toBeUndefined();
   });
 
-  it("프리캐시 목록에 리다이렉트되는 '/'가 없고 정적 자원만 담는다", async () => {
-    const sw = loadServiceWorker(new Set(["/"]));
-    let waited: Promise<unknown> | undefined;
-    sw.handlers.install({ waitUntil: (p) => (waited = p) });
-    await waited;
-
-    const urls = sw.precachedUrls();
-    expect(urls).toContain("/manifest.json");
-    expect(urls).toContain("/icons/icon.svg");
-    expect(urls).not.toContain("/");
-  });
-
-  it("[하네스 자체 검증] '/'를 프리캐시하면 addAll이 실제로 거부한다", async () => {
-    const sw = loadServiceWorker(new Set(["/"]));
-    const cache = await sw.cachesMock.open("probe");
-
-    await expect(cache.addAll(["/"])).rejects.toBeInstanceOf(TypeError);
-    await expect(cache.addAll(["/manifest.json"])).resolves.toBeUndefined();
+  it("install은 skipWaiting으로 즉시 활성화한다", () => {
+    const sw = loadServiceWorker();
+    sw.handlers.install({ waitUntil: () => {} });
+    expect(sw.self.skipWaiting).toHaveBeenCalled();
   });
 });
 
-describe("service worker activate", () => {
-  it("현재 버전이 아닌 구버전 캐시를 삭제하고 현재 캐시는 남긴다", async () => {
-    const sw = loadServiceWorker(new Set(["/"]), ["app-shell-v4", "app-shell-v5"]);
+describe("service worker 자폭 — activate 정리", () => {
+  it("모든 캐시를 삭제한다", async () => {
+    const sw = loadServiceWorker(["app-shell-v5", "app-shell-v4"]);
     let waited: Promise<unknown> | undefined;
     sw.handlers.activate({ waitUntil: (p) => (waited = p) });
     await waited;
 
-    expect(sw.deleted()).toContain("app-shell-v4");
-    expect(sw.cacheNames()).toContain("app-shell-v5");
-    expect(sw.cacheNames()).not.toContain("app-shell-v4");
+    expect(sw.remainingCaches()).toHaveLength(0);
+    expect(sw.deleted()).toEqual(expect.arrayContaining(["app-shell-v5", "app-shell-v4"]));
+  });
+
+  it("자기 자신의 등록을 해제한다", async () => {
+    const sw = loadServiceWorker();
+    let waited: Promise<unknown> | undefined;
+    sw.handlers.activate({ waitUntil: (p) => (waited = p) });
+    await waited;
+
+    expect(sw.self.registration.unregister).toHaveBeenCalled();
+  });
+
+  it("열린 window 클라이언트를 재로드한다", async () => {
+    const navigate = vi.fn();
+    const sw = loadServiceWorker([], [{ url: "https://daaram-pwa.vercel.app/", navigate }]);
+    let waited: Promise<unknown> | undefined;
+    sw.handlers.activate({ waitUntil: (p) => (waited = p) });
+    await waited;
+
+    expect(navigate).toHaveBeenCalledWith("https://daaram-pwa.vercel.app/");
   });
 });
 
-describe("service worker 캐시 버전", () => {
-  it("배포 시 구캐시 무효화가 트리거되도록 CACHE_VERSION이 v5다", () => {
-    expect(swSource).toContain('CACHE_VERSION = "v5"');
+describe("service worker 자폭 — 데이터 안전", () => {
+  it("Cache Storage만 건드리고 IndexedDB는 절대 접근하지 않는다", () => {
+    expect(swSource.toLowerCase()).not.toContain("indexeddb");
   });
 });

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { RegisterServiceWorker } from "./register-sw";
+import { ServiceWorkerCleanup } from "./register-sw";
 import { BottomTabBar } from "./BottomTabBar";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <RegisterServiceWorker />
+        <ServiceWorkerCleanup />
         {children}
         <BottomTabBar />
       </body>

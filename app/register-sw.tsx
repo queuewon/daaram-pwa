@@ -2,24 +2,24 @@
 
 import { useEffect } from "react";
 
-export function RegisterServiceWorker(): null {
+/**
+ * 서비스워커를 등록하지 않고, 과거에 설치된 워커와 캐시를 정리한다. [F7]
+ * 이 앱은 오프라인이 원래 불가하고 데이터가 IndexedDB에 있어 SW의 실익이 없어 걷어냈다.
+ * public/sw.js(자폭 스크립트)가 주 정리 경로이고, 여기서는 페이지가 뜨는 클라이언트를 위한
+ * 이중 안전장치로 기존 등록 해제 + Cache Storage 삭제만 수행한다. (IndexedDB는 건드리지 않음.)
+ */
+export function ServiceWorkerCleanup(): null {
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
-    // 개발 모드에서는 서비스워커를 등록하지 않는다.
-    // 이미 설치된 워커가 남아 있으면 오래된 캐시(특히 cache-first로 잡히는 "/" HTML)가
-    // 코드 변경을 가려버려 디버깅을 방해하므로, 기존 등록을 해제해 캐시 충돌을 원천 차단한다.
-    // 오프라인 캐싱은 프로덕션 빌드에서만 동작한다. [F7]
-    if (process.env.NODE_ENV !== "production") {
+    if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .getRegistrations()
         .then((registrations) =>
           registrations.forEach((registration) => registration.unregister()),
         );
-      return;
     }
-
-    navigator.serviceWorker.register("/sw.js");
+    if ("caches" in window) {
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+    }
   }, []);
 
   return null;

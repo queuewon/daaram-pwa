@@ -1,53 +1,22 @@
-// CACHE_VERSION을 배포마다 올려서 구버전 캐시를 강제 무효화한다 (F7: 구버전 앱 갇힘 방지)
-const CACHE_VERSION = "v5";
-const CACHE_NAME = `app-shell-${CACHE_VERSION}`;
-// "/"는 게이트가 /gate로 리다이렉트하므로 프리캐시에 넣으면 cache.addAll이 redirected 응답에서
-// TypeError를 던져 install 자체가 실패한다(→ 깨진 SW, ERR_FAILED). 리다이렉트 없는 정적 자원만 담는다.
-const APP_SHELL_URLS = ["/manifest.json", "/icons/icon.svg"];
+// 자폭(self-destruct) 서비스워커. [F7]
+// 이 앱은 게이트가 네트워크로 돌아 오프라인이 원래 불가하고, 데이터는 브라우저 로컬 DB에 있어
+// 서비스워커의 실익이 없다. 과거에 설치된 SW를 안전하게 걷어내기 위해 fetch 핸들러 없이
+// 스스로 등록을 해제하고 Cache Storage를 비운다. (레시피·재료 데이터는 절대 건드리지 않는다.)
+// register-sw.tsx가 더 이상 SW를 등록하지 않으므로, 이 스크립트는 기존 설치분 정리 용도다.
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_URLS)));
-  self.skipWaiting();
-});
+self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
+    (async () => {
+      // Cache Storage 전부 삭제 (브라우저 로컬 DB는 손대지 않음)
+      for (const key of await caches.keys()) await caches.delete(key);
+      // 자기 등록 해제 → 이후 요청은 전부 네트워크로
+      await self.registration.unregister();
+      // 현재 열려 있는 탭을 새로고침해 컨트롤러(SW) 없이 다시 로드
+      for (const client of await self.clients.matchAll({ type: "window" })) {
+        client.navigate(client.url);
+      }
+    })(),
   );
-});
-
-// Next.js 빌드 청크는 파일명에 콘텐츠 해시가 박혀 있어 내용이 바뀌면 경로 자체가 바뀐다.
-// 그래서 미리 목록을 알 수 없고, 버전 걱정 없이 최초 요청 시점에 캐시해도 안전하다(불변 자원).
-function isBuildAsset(pathname) {
-  return pathname.startsWith("/_next/static/");
-}
-
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  const isSameOriginGet = event.request.method === "GET" && url.origin === self.location.origin;
-
-  if (!isSameOriginGet) return;
-
-  const isPrecachedShellAsset = APP_SHELL_URLS.includes(url.pathname);
-
-  if (isPrecachedShellAsset) {
-    event.respondWith(caches.match(event.request).then((cached) => cached ?? fetch(event.request)));
-    return;
-  }
-
-  if (isBuildAsset(url.pathname)) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(event.request);
-        if (cached) return cached;
-
-        const response = await fetch(event.request);
-        if (response.ok) cache.put(event.request, response.clone());
-        return response;
-      }),
-    );
-  }
 });
