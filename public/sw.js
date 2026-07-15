@@ -1,7 +1,9 @@
 // CACHE_VERSION을 배포마다 올려서 구버전 캐시를 강제 무효화한다 (F7: 구버전 앱 갇힘 방지)
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const CACHE_NAME = `app-shell-${CACHE_VERSION}`;
-const APP_SHELL_URLS = ["/", "/manifest.json", "/icons/icon.svg"];
+// "/"는 게이트가 /gate로 리다이렉트하므로 프리캐시에 넣으면 cache.addAll이 redirected 응답에서
+// TypeError를 던져 install 자체가 실패한다(→ 깨진 SW, ERR_FAILED). 리다이렉트 없는 정적 자원만 담는다.
+const APP_SHELL_URLS = ["/manifest.json", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_URLS)));
