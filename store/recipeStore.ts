@@ -7,6 +7,8 @@ import {
 } from "../lib/infra/repositories";
 import { recipeFormInputSchema } from "../lib/domain/recipeForm.schema";
 import { buildRecipeVersion, nextVersionNo } from "../lib/domain/recipeVersion";
+import { totalBatchGram } from "../lib/domain/batch";
+import { parsePositiveNumber } from "../lib/domain/numbers";
 import { generateId } from "../lib/domain/ids";
 import { err, ok, type Result } from "../lib/domain/result";
 import type { Recipe, RecipeVersion } from "../lib/domain/entities";
@@ -60,14 +62,31 @@ export const useRecipeStore = create<RecipeStoreState>((set) => ({
     }
 
     const now = new Date().toISOString();
-    const snapshot = { batchSize: parsed.data.batchSize, lines: parsed.data.lines };
+
+    // 기본 배치량은 재료 합으로 파생한다(폼 refine이 합 > 0을 보장).
+    const batchResult = parsePositiveNumber(totalBatchGram(parsed.data.lines));
+    if (!batchResult.ok) {
+      return err({
+        type: "InvalidForm",
+        issues: [
+          {
+            code: "custom",
+            message: "재료 총량이 0보다 커야 합니다",
+            path: ["lines"],
+            input: form,
+          },
+        ],
+      });
+    }
+    const batchSize = batchResult.value;
+    const snapshot = { batchSize, lines: parsed.data.lines };
 
     if (recipeId === null) {
       const recipe: Recipe = {
         id: generateId<"RecipeId">(),
         name: parsed.data.name,
         categoryIds: parsed.data.categoryIds,
-        batchSize: parsed.data.batchSize,
+        batchSize,
         memo: parsed.data.memo,
         createdAt: now,
         updatedAt: now,
@@ -97,7 +116,7 @@ export const useRecipeStore = create<RecipeStoreState>((set) => ({
       ...existingResult.value,
       name: parsed.data.name,
       categoryIds: parsed.data.categoryIds,
-      batchSize: parsed.data.batchSize,
+      batchSize,
       memo: parsed.data.memo,
       updatedAt: now,
     };

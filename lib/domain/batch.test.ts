@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { scaleBatch, stepBatchSize } from "./batch";
+import { scaleBatch, stepBatchSize, totalBatchGram } from "./batch";
 import { parseNonNegativeNumber, parsePositiveNumber } from "./numbers";
 import type { IngredientId } from "./ids";
+
+describe("totalBatchGram", () => {
+  it("재료 사용량의 합을 반환한다", () => {
+    expect(totalBatchGram([{ quantityGram: 100 }, { quantityGram: 50 }])).toBe(150);
+  });
+
+  it("빈 배열이면 0", () => {
+    expect(totalBatchGram([])).toBe(0);
+  });
+
+  it("단일 재료면 그 값", () => {
+    expect(totalBatchGram([{ quantityGram: 250 }])).toBe(250);
+  });
+});
 
 function nn(n: number) {
   const result = parseNonNegativeNumber(n);

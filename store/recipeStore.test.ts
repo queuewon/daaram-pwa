@@ -16,8 +16,7 @@ afterEach(async () => {
 function validForm(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     name: "피스타치오 젤라또",
-    categoryId: null,
-    batchSize: 1000,
+    categoryIds: [],
     memo: "",
     lines: [{ ingredientId: "ingredient-a" as IngredientId, quantityGram: 100 }],
     ...overrides,
@@ -35,9 +34,20 @@ describe("recipeStore.saveRecipe — 생성", () => {
     if (!result.ok) return;
 
     expect(result.value.name).toBe("피스타치오 젤라또");
+    expect(result.value.batchSize).toBe(100); // 재료 합(100)으로 파생
     expect(useRecipeStore.getState().recipes).toHaveLength(1);
     expect(useRecipeStore.getState().versions).toHaveLength(1);
     expect(useRecipeStore.getState().versions[0].versionNo).toBe(1);
+  });
+
+  it("재료가 없으면(총량 0) InvalidForm으로 거부한다", async () => {
+    const result = await useRecipeStore.getState().saveRecipe({
+      recipeId: null,
+      form: validForm({ lines: [] }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.type).toBe("InvalidForm");
   });
 
   it("잘못된 폼 입력이면 InvalidForm 오류를 반환하고 아무것도 저장하지 않는다", async () => {
@@ -63,12 +73,14 @@ describe("recipeStore.saveRecipe — 수정", () => {
 
     const updated = await useRecipeStore.getState().saveRecipe({
       recipeId,
-      form: validForm({ batchSize: 2000 }),
+      form: validForm({
+        lines: [{ ingredientId: "ingredient-a" as IngredientId, quantityGram: 300 }],
+      }),
     });
 
     expect(updated.ok).toBe(true);
     if (!updated.ok) return;
-    expect(updated.value.batchSize).toBe(2000);
+    expect(updated.value.batchSize).toBe(300); // 재료 합(300)으로 재계산
 
     await useRecipeStore.getState().loadVersions(recipeId);
     const versions = useRecipeStore.getState().versions;
